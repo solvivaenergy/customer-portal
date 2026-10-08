@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vite
+
+# Internal planning documents stay local (the repository is public).
+*.xlsx
+*.docx
+Customer Portal - Development Plan*.md
+
+# TypeScript incremental build state
+tsconfig.tsbuildinfo
