@@ -48,6 +48,10 @@ export type HourBucket = {
   consumption_kwh: number | null;
   grid_import_kwh: number | null;
   grid_export_kwh: number | null;
+  // Battery energy of the hour (monitoring migration 24, 2026-10-09): the sum of the
+  // five-minute slices of Solis's batteryPower. Hours stored before that hold 0.
+  battery_charge_kwh: number | null;
+  battery_discharge_kwh: number | null;
   peak_power_kw: number | null;
   battery_level_end: number | null;
   points: number;
@@ -60,6 +64,10 @@ export type LiveData = {
   today_consumption_kwh: number;
   today_grid_import_kwh: number;
   today_grid_export_kwh: number;
+  // Integrated from today's five-minute curve like the totals above; absent (undefined)
+  // from a monitoring API older than 2026-10-09.
+  today_battery_charge_kwh?: number | null;
+  today_battery_discharge_kwh?: number | null;
   battery_level: number | null;
   battery_status: string | null;
   capacity_kwp: number;

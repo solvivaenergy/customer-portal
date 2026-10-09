@@ -47,7 +47,7 @@ export async function fetchDayHours(system: SolarSystem, dateKey: string, viaApi
   const end = addDays(start, 1);
   const { data, error } = await supabase
     .from("energy_readings_hourly")
-    .select("hour_start,production_kwh,consumption_kwh,grid_import_kwh,grid_export_kwh,peak_power_kw,battery_level_end,points")
+    .select("hour_start,production_kwh,consumption_kwh,grid_import_kwh,grid_export_kwh,battery_charge_kwh,battery_discharge_kwh,peak_power_kw,battery_level_end,points")
     .eq("system_id", system.id)
     .gte("hour_start", start.toISOString())
     .lt("hour_start", end.toISOString())
@@ -60,6 +60,8 @@ export async function fetchDayHours(system: SolarSystem, dateKey: string, viaApi
     consumption_kwh: null,
     grid_import_kwh: null,
     grid_export_kwh: null,
+    battery_charge_kwh: null,
+    battery_discharge_kwh: null,
     peak_power_kw: null,
     battery_level_end: null,
     points: 0,
@@ -268,7 +270,9 @@ export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate
   const points: SeriesPoint[] = hours.map((h) => {
     const production = n(h.production_kwh);
     const consumption = h.consumption_kwh == null ? null : Number(h.consumption_kwh);
-    const split = splitConsumption(consumption, n(h.grid_import_kwh), 0);
+    // Battery share of the hour's consumption = what the battery discharged (hours before
+    // 2026-10-09 hold 0 until re-read; before that this was a hard-coded 0).
+    const split = splitConsumption(consumption, n(h.grid_import_kwh), n(h.battery_discharge_kwh));
     const hh = h.hour % 12 === 0 ? 12 : h.hour % 12;
     return {
       key: String(h.hour),

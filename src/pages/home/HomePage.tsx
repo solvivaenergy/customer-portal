@@ -24,8 +24,10 @@ function patchToday(rows: DailyReading[], live: LiveData | null): DailyReading[]
     grid_export_kwh: live.today_grid_export_kwh,
     battery_level: live.battery_level,
     battery_status: live.battery_status,
-    battery_charge_kwh: null,
-    battery_discharge_kwh: null,
+    // Today's "Battery" share of the week/month bar; null on an API older than 2026-10-09
+    // (then it shows 0.0, as it always did before).
+    battery_charge_kwh: live.today_battery_charge_kwh ?? null,
+    battery_discharge_kwh: live.today_battery_discharge_kwh ?? null,
   };
   const idx = rows.findIndex((r) => manilaDateKey(r.timestamp) === today);
   if (idx === -1) return [...rows, todayRow];
