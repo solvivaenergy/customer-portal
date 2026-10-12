@@ -175,7 +175,8 @@ export default function HomePage() {
   const selfShare = split ? Math.round((split.solar + split.battery) * 100) : null;
   const perfBounds = periodBounds(perf.period);
   const savingsBounds = periodBounds(savings.period);
-  const xInterval = (p: Period) => (p.range === "1M" ? 2 : p.range === "1D" ? 2 : 0);
+  // Ticks to skip between labels: "Oct 5"-style labels need more room than month names.
+  const xInterval = (p: Period) => (p.range === "1M" ? 4 : p.range === "1D" ? 2 : 0);
 
   return (
     <>

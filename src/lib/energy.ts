@@ -254,11 +254,9 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
     points = [...byMonth.values()];
   } else {
     points = [];
+    // Day points (1W, 1M) are labelled with the actual date ("Oct 5"), not the weekday.
     for (let k = start; k <= end; k = manilaDateKey(addDays(dateFromKey(k), 1))) {
-      const d = dateFromKey(k);
-      const label = period.range === "1W" ? d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }) : String(d.getUTCDate());
-      points.push(perDay.get(k) ?? { key: k, label, production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
-      if (period.range === "1W") points[points.length - 1].label = label;
+      points.push(perDay.get(k) ?? { key: k, label: fmtShort(k), production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
     }
   }
   return sumPoints(points, estimatedRate);
