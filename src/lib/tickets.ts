@@ -18,6 +18,10 @@ type OdooTicket = {
   create_date: string; // "YYYY-MM-DD HH:MM:SS" in UTC
   partner_email: string | false;
   partner_name: string | false;
+  // Returned by the staging workflow (and by production once its field list is extended).
+  ticket_ref?: string | false;
+  team_id?: [number, string] | false;
+  tag_ids?: number[];
 };
 
 export function statusFromStage(stage: string): TicketStatus {
@@ -34,10 +38,11 @@ function toTicket(t: OdooTicket): Ticket {
   const stage = t.stage_id ? t.stage_id[1] : "New";
   const descriptionHtml = t.description || "";
   const description = stripHtml(descriptionHtml);
-  const isPms = /\bPMS\b|preventive maintenance/i.test(`${t.name} ${description.slice(0, 200)}`);
+  const team = t.team_id ? t.team_id[1] : "";
+  const isPms = /\bPMS\b|preventive maintenance/i.test(`${t.name} ${team} ${description.slice(0, 200)}`);
   return {
     id: t.id,
-    ref: `${isPms ? "PMS" : "CS"}-${t.id}`,
+    ref: t.ticket_ref ? `#${t.ticket_ref}` : `${isPms ? "PMS" : "CS"}-${t.id}`,
     subject: t.name,
     descriptionHtml,
     description,
@@ -57,6 +62,7 @@ export async function fetchMyTickets(email: string): Promise<Ticket[]> {
   });
   if (!res.ok) throw new Error(`Ticket lookup failed (${res.status})`);
   const json = (await res.json()) as unknown;
+  if (json && !Array.isArray(json) && typeof json === "object" && "error" in json) throw new Error(String((json as { error: unknown }).error));
   const rows: OdooTicket[] = Array.isArray(json) ? (json as OdooTicket[]) : [];
   return rows.map(toTicket).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

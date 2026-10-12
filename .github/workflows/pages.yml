@@ -30,7 +30,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_MONITORING_API_URL: https://monitoring.solvivaenergy.com
-          VITE_N8N_WEBHOOK_URL: https://solviva.app.n8n.cloud/webhook
+          # Repository variable; ".../webhook/staging" targets the [STAGING] n8n workflows (odoo.sh staging),
+          # ".../webhook" the production ones (website flow, production Odoo).
+          VITE_N8N_WEBHOOK_URL: ${{ vars.VITE_N8N_WEBHOOK_URL || 'https://solviva.app.n8n.cloud/webhook' }}
           # Keep ticket/PMS submissions off on the demo build; flip to "true" when test tickets in Odoo are wanted.
           VITE_ENABLE_SUBMISSIONS: ${{ vars.VITE_ENABLE_SUBMISSIONS || 'false' }}
         run: |
