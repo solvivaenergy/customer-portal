@@ -118,7 +118,8 @@ function buildList(prod) {
   search.parameters.body = String(search.parameters.body)
     .replace(/\$vars\.ODOO_SH_PROD_DB/g, "$vars.ODOO_SH_STAGING_DB")
     .replace(/\$vars\.ODOO_API_KEY/g, "$vars.ODOO_SH_STAGING_KEY")
-    .replace("['partner_email', '=',", "['partner_email', '=ilike',")
+    // Substring match: Odoo often stores partner_email as "Name" <email>, which an exact match misses.
+    .replace("['partner_email', '=',", "['partner_email', 'ilike',")
     .replace("'partner_name'", "'partner_name', 'ticket_ref', 'team_id', 'tag_ids'");
 
   const respond = clone(prod, "Respond to Webhook");
