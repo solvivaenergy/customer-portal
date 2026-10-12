@@ -236,7 +236,7 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
     for (let k = start; k <= end; ) {
       const d = dateFromKey(k);
       const mk = k.slice(0, 7);
-      byMonth.set(mk, { key: mk, label: `${MONTHS[d.getUTCMonth()]}${period.range === "1Y" && d.getUTCMonth() === 0 ? ` ${d.getUTCFullYear()}` : ""}`, production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
+      byMonth.set(mk, { key: mk, label: MONTHS[d.getUTCMonth()], production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
       k = manilaDateKey(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 4)));
     }
     for (const p of perDay.values()) {
@@ -306,3 +306,12 @@ export function lifetime(rows: DailyReading[], rates: Rate[], providerId: number
 }
 
 export const todayKey = () => manilaDateKey(manilaToday());
+
+/**
+ * Where a monthly series crosses into a new year (a January that is not the first point):
+ * the chart draws a vertical divider there instead of labelling the month "Jan 2026".
+ */
+export function yearDivider(points: SeriesPoint[]): { x: string; year: string } | null {
+  const i = points.findIndex((p, idx) => idx > 0 && p.key.length === 7 && p.key.endsWith("-01"));
+  return i === -1 ? null : { x: points[i].label, year: points[i].key.slice(0, 4) };
+}

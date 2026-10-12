@@ -1,10 +1,18 @@
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SeriesPoint } from "@/lib/energy";
 import { php, phpShort, num } from "@/lib/format";
 
-const COLORS = { grid: "#1f522b", solar: "#8be114", battery: "#def0d8", line: "#15803d", fill: "#f0fdf4", production: "#8be114" };
+const COLORS = { grid: "#1f522b", solar: "#8be114", battery: "#def0d8", line: "#15803d", fill: "#f0fdf4", production: "#8be114", divider: "#98a2b3" };
 
 const axisStyle = { fontSize: 12, fill: "#667085" };
+
+/** Vertical year marker: drawn at the start of the `x` category (i.e. between December and January). */
+export type YearDivider = { x: string; year: string };
+
+function YearLine({ divider }: { divider?: YearDivider | null }) {
+  if (!divider) return null;
+  return <ReferenceLine x={divider.x} position="start" stroke={COLORS.divider} strokeDasharray="4 4" label={{ value: divider.year, position: "insideTopLeft", fill: "#667085", fontSize: 12, offset: 8 }} />;
+}
 
 function TooltipBox({ title, rows }: { title: string; rows: { label: string; value: string; color?: string }[] }) {
   return (
@@ -21,7 +29,7 @@ function TooltipBox({ title, rows }: { title: string; rows: { label: string; val
   );
 }
 
-export function SavingsChart({ points, interval }: { points: SeriesPoint[]; interval?: number }) {
+export function SavingsChart({ points, interval, divider }: { points: SeriesPoint[]; interval?: number; divider?: YearDivider | null }) {
   const data = points.map((p) => ({ ...p, savings: Math.round(p.savings * 100) / 100 }));
   return (
     <div className="h-64 w-full">
@@ -34,7 +42,8 @@ export function SavingsChart({ points, interval }: { points: SeriesPoint[]; inte
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
-          <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} />
+          {/* Band scale so a ReferenceLine with position="start" can sit between two months. */}
+          <XAxis dataKey="label" scale="band" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} />
           <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={(v: number) => phpShort(v)} width={64} />
           <Tooltip
             cursor={{ stroke: "#d0d5dd" }}
@@ -42,6 +51,7 @@ export function SavingsChart({ points, interval }: { points: SeriesPoint[]; inte
               active && payload?.length ? <TooltipBox title={String(payload[0].payload.label)} rows={[{ label: "Savings", value: php(Number(payload[0].value)), color: COLORS.line }, { label: "Production", value: `${num(payload[0].payload.production, 1)} kWh` }]} /> : null
             }
           />
+          <YearLine divider={divider} />
           <Area type="monotone" dataKey="savings" stroke={COLORS.line} strokeWidth={2} fill="url(#savingsFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
@@ -49,7 +59,7 @@ export function SavingsChart({ points, interval }: { points: SeriesPoint[]; inte
   );
 }
 
-export function ConsumptionChart({ points, hasConsumption, interval }: { points: SeriesPoint[]; hasConsumption: boolean; interval?: number }) {
+export function ConsumptionChart({ points, hasConsumption, interval, divider }: { points: SeriesPoint[]; hasConsumption: boolean; interval?: number; divider?: YearDivider | null }) {
   const data = points.map((p) => ({ ...p, grid: round1(p.grid), solar: round1(p.solar), battery: round1(p.battery), production: round1(p.production) }));
   return (
     <div className="h-64 w-full">
@@ -74,6 +84,7 @@ export function ConsumptionChart({ points, hasConsumption, interval }: { points:
               return <TooltipBox title={p.label} rows={rows} />;
             }}
           />
+          <YearLine divider={divider} />
           {hasConsumption ? (
             <>
               <Bar dataKey="grid" stackId="c" fill={COLORS.grid} isAnimationActive={false} />

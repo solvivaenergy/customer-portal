@@ -3,7 +3,7 @@ import { BatteryCharging, ChevronLeft, ChevronRight, Share2, Zap } from "lucide-
 import { CoinsIcon, HandshakeIcon } from "@/components/icons";
 import { usePortal } from "@/lib/portal";
 import { api } from "@/lib/api";
-import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, shiftPeriod, todayKey, type Aggregate, type Period, type RangeId } from "@/lib/energy";
+import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, shiftPeriod, todayKey, yearDivider, type Aggregate, type Period, type RangeId } from "@/lib/energy";
 import { dateFromKey, kwh, manilaDateKey, num, php, firstName, greeting, shortDate, dateTime } from "@/lib/format";
 import type { DailyReading, FiveMinuteRow, HourBucket, LiveData } from "@/lib/types";
 import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Select, Spinner, cx } from "@/components/ui";
@@ -218,7 +218,7 @@ export default function HomePage() {
               savingsAgg.days === 0 ? (
                 <EmptyState title="No data for this period" description="Your inverter did not report any production in this period." />
               ) : (
-                <SavingsChart points={savingsAgg.points} interval={xInterval(savings.period)} />
+                <SavingsChart points={savingsAgg.points} interval={xInterval(savings.period)} divider={yearDivider(savingsAgg.points)} />
               )
             ) : (
               <div className="flex h-64 items-center justify-center">
@@ -287,7 +287,7 @@ export default function HomePage() {
               perfAgg.days === 0 ? (
                 <EmptyState title="No data for this period" description="Your inverter did not report any data in this period." />
               ) : (
-                <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} />
+                <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} />
               )
             ) : (
               <div className="flex h-64 items-center justify-center">
