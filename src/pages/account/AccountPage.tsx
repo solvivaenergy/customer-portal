@@ -229,14 +229,13 @@ function SystemTab() {
     : batteryKwh
       ? `${num(batteryKwh)} kWh Battery Storage`
       : null;
-  const inverterLine = d?.inverter ? `${[d.inverter.brand, d.inverter.model].filter(Boolean).join(" ") || "Inverter"}${d.inverter.kwPerUnit ? ` ${num(d.inverter.kwPerUnit, 1)} kW` : ""}${d.inverter.units > 1 ? ` × ${d.inverter.units}` : ""}` : null;
+  // Inverter details are available in `d.inverter` but not shown: the mockup lists only the system and the battery.
   const items: [string, ReactNode][] = [
     [
       "System details",
       <div className="flex flex-col gap-1">
         <span>{kwp ? `${num(kwp, 2)} kWp Solar Power System` : "Solar Power System"}</span>
         {batteryLine && <span>{batteryLine}</span>}
-        {inverterLine && <span className="text-neutral-500">Inverter: {inverterLine}</span>}
       </div>,
     ],
     ["Site address", system.address || "—"],
