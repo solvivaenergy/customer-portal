@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, ChevronRight, Headset, Inbox, PhoneCall, Wrench } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Inbox } from "lucide-react";
+import { PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/icons";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Spinner, cx, type BadgeTone } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
@@ -73,9 +74,9 @@ export default function SupportHubPage() {
       <PageHeader title="Support and Helpdesk" subtitle="Submit a ticket, request a maintenance visit, or reach our team." />
 
       <div className="grid gap-5 md:grid-cols-3">
-        <ActionCard to="/support/tickets/new" icon={<Headset className="h-10 w-10" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" />
-        <ActionCard to="/support/pms" icon={<Wrench className="h-10 w-10" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" />
-        <ActionCard to="/support/contact" icon={<PhoneCall className="h-10 w-10" />} title="Contact support" description="Reach out to our hotline and email for assistance." />
+        <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" />
+        <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" />
+        <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." />
       </div>
 
       <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">My activities</h2>

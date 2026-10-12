@@ -1,5 +1,5 @@
 import { Logo } from "@/components/Logo";
-import { CoinsIcon, HandshakeIcon } from "@/components/icons";
+import { CoinsIcon, HandshakeIcon, PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/icons";
 import { Card } from "@/components/ui";
 import { yearDivider, type SeriesPoint } from "@/lib/energy";
 import { ConsumptionChart, SavingsChart } from "./home/charts";
@@ -38,6 +38,18 @@ export default function DevPreviewPage() {
           <div className="rounded-xl bg-white p-6 shadow-xs">
             <Logo variant="dark" size="lg" linkTo={null} />
           </div>
+        </div>
+        <div className="flex flex-col gap-4">
+          {[
+            [<SupportTicketIcon className="h-12 w-12" />, "Submit a support ticket"],
+            [<PmsToolsIcon className="h-12 w-12" />, "Request PMS"],
+            [<PhoneCallIcon className="h-12 w-12" />, "Contact support"],
+          ].map(([icon, title], i) => (
+            <Card key={i} className="w-[300px]">
+              {icon}
+              <p className="mt-5 text-xl font-semibold text-neutral-900">{title}</p>
+            </Card>
+          ))}
         </div>
       </div>
       <div className="grid max-w-[1120px] gap-6 lg:grid-cols-2">
