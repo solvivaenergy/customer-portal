@@ -18,6 +18,7 @@ import TicketDetailPage from "./pages/support/TicketDetailPage";
 import ContactSupportPage from "./pages/support/ContactSupportPage";
 import PmsIntroPage from "./pages/support/PmsIntroPage";
 import PmsRequestPage from "./pages/support/PmsRequestPage";
+import PmsDetailPage from "./pages/support/PmsDetailPage";
 import SubmissionSuccessPage from "./pages/support/SubmissionSuccessPage";
 import AccountPage from "./pages/account/AccountPage";
 
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/support/contact" element={<ContactSupportPage />} />
         <Route path="/support/pms" element={<PmsIntroPage />} />
         <Route path="/support/pms/request" element={<PmsRequestPage />} />
+        <Route path="/support/pms/requests/:id" element={<PmsDetailPage />} />
         <Route path="/support/success" element={<SubmissionSuccessPage />} />
         <Route path="/account" element={<Navigate to="/account/profile" replace />} />
         <Route path="/account/:tab" element={<AccountPage />} />

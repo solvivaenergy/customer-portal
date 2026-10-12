@@ -24,6 +24,7 @@ export type SolarSystem = {
   solis_plant_name: string | null;
   is_primary: boolean | null;
   electricity_provider_id: number | null;
+  odoo_lead_id: number | null; // CRM lead the plant was mirrored from (links Maintenance-app PMS requests)
 };
 
 export type Provider = { id: number; name: string; code: string };
@@ -85,6 +86,33 @@ export type FiveMinuteRow = {
 };
 
 export type TicketStatus = "New" | "In Progress" | "Resolved" | "Cancelled";
+
+/** A PMS request from Odoo's Maintenance app (maintenance.request). */
+export type PmsRecord = {
+  id: number;
+  ref: string;
+  name: string;
+  stage: string;
+  status: TicketStatus;
+  requestDate: string | null; // YYYY-MM-DD
+  scheduleDate: string | null; // ISO
+  closeDate: string | null;
+  preferredDate: string | null;
+  timeSlot: string | null;
+  alternativeDate: string | null;
+  siteAddress: string | null;
+  panelLocation: string | null;
+  accessEquipment: string | null;
+  workPermit: string | null;
+  siteContact: string | null;
+  accessInstructions: string | null;
+  hasIssues: boolean;
+  issueDescription: string | null;
+  otherRequests: string | null;
+  technician: string | null;
+  description: string;
+  createdAt: string;
+};
 
 export type Ticket = {
   id: number;

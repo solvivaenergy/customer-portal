@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronRight, Inbox } from "lucide-react";
 import { PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/icons";
@@ -6,8 +6,9 @@ import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Spinner, cx, type BadgeTone } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
-import { shortDate, truncate } from "@/lib/format";
-import type { Ticket, TicketStatus } from "@/lib/types";
+import { useMyPms } from "@/lib/usePms";
+import { dateTime, longDate, shortDate, truncate } from "@/lib/format";
+import type { PmsRecord, Ticket, TicketStatus } from "@/lib/types";
 
 export const STATUS_TONE: Record<TicketStatus, BadgeTone> = { New: "blue", "In Progress": "amber", Resolved: "green", Cancelled: "neutral" };
 
@@ -58,15 +59,21 @@ function Pagination({ page, pages, onChange }: { page: number; pages: number; on
   );
 }
 
+function Th({ children }: { children: React.ReactNode }) {
+  return <th className="px-6 py-3 font-medium">{children}</th>;
+}
+
 export default function SupportHubPage() {
-  const { profile } = usePortal();
-  const { tickets, loading, error, refresh } = useTickets(profile?.email);
+  const { profile, systems } = usePortal();
+  const tickets = useTickets(profile?.email);
+  const pms = useMyPms(profile, systems);
   const [kind, setKind] = useState<"support" | "pms">("support");
   const [page, setPage] = useState(1);
 
-  const filtered = useMemo(() => (tickets ?? []).filter((t) => t.kind === kind), [tickets, kind]);
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const active = kind === "support" ? { rows: tickets.tickets, loading: tickets.loading, error: tickets.error } : { rows: pms.pms, loading: pms.loading, error: pms.error };
+  const rows = active.rows ?? [];
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const visible = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
@@ -92,17 +99,17 @@ export default function SupportHubPage() {
             setPage(1);
           }}
         />
-        <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
+        <Button variant="ghost" size="sm" onClick={() => (kind === "support" ? tickets.refresh() : pms.refresh())} disabled={active.loading}>
           Refresh
         </Button>
       </div>
 
       <Card padded={false} className="overflow-hidden">
-        {error ? (
+        {active.error ? (
           <div className="p-6">
-            <ErrorNotice message={`Could not load your tickets: ${error}`} />
+            <ErrorNotice message={`Could not load your ${kind === "pms" ? "PMS requests" : "tickets"}: ${active.error}`} />
           </div>
-        ) : loading && !tickets ? (
+        ) : active.loading && !active.rows ? (
           <div className="flex justify-center py-16">
             <Spinner />
           </div>
@@ -117,20 +124,20 @@ export default function SupportHubPage() {
               </Link>
             }
           />
-        ) : (
+        ) : kind === "support" ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-neutral-100 text-neutral-700">
                 <tr>
-                  <th className="px-6 py-3 font-medium">Ticket No.</th>
-                  <th className="px-6 py-3 font-medium">Subject</th>
-                  <th className="px-6 py-3 font-medium">Description</th>
-                  <th className="px-6 py-3 font-medium">Created</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                  <Th>Ticket No.</Th>
+                  <Th>Subject</Th>
+                  <Th>Description</Th>
+                  <Th>Created</Th>
+                  <Th>Status</Th>
                 </tr>
               </thead>
               <tbody>
-                {visible.map((t: Ticket) => (
+                {(visible as Ticket[]).map((t) => (
                   <tr key={t.id} className="border-t border-neutral-200 hover:bg-neutral-50">
                     <td className="px-6 py-4">
                       <Link to={`/support/tickets/${t.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
@@ -142,6 +149,37 @@ export default function SupportHubPage() {
                     <td className="px-6 py-4 text-neutral-700">{shortDate(t.createdAt)}</td>
                     <td className="px-6 py-4">
                       <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-neutral-100 text-neutral-700">
+                <tr>
+                  <Th>Request No.</Th>
+                  <Th>Subject</Th>
+                  <Th>Scheduled visit</Th>
+                  <Th>Requested</Th>
+                  <Th>Status</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {(visible as PmsRecord[]).map((r) => (
+                  <tr key={r.id} className="border-t border-neutral-200 hover:bg-neutral-50">
+                    <td className="px-6 py-4">
+                      <Link to={`/support/pms/requests/${r.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
+                        {r.ref}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 text-neutral-700">{truncate(r.name, 44)}</td>
+                    <td className="px-6 py-4 text-neutral-600">{r.scheduleDate ? dateTime(r.scheduleDate) : "To be confirmed"}</td>
+                    <td className="px-6 py-4 text-neutral-700">{r.requestDate ? longDate(r.requestDate) : shortDate(r.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      <Badge tone={STATUS_TONE[r.status]}>{r.stage}</Badge>
                     </td>
                   </tr>
                 ))}

@@ -4,7 +4,7 @@ import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Button, Card } from "@/components/ui";
 
 export default function SubmissionSuccessPage() {
-  const state = useLocation().state as { kind?: "ticket" | "pms"; dryRun?: boolean } | null;
+  const state = useLocation().state as { kind?: "ticket" | "pms"; dryRun?: boolean; ref?: string } | null;
   const isPms = state?.kind === "pms";
   return (
     <>
@@ -15,6 +15,7 @@ export default function SubmissionSuccessPage() {
         <p className="mx-auto mt-2 max-w-sm text-base text-neutral-500">
           {isPms ? "Your request has been created. Our team is looking into it and will reach out to you as soon as possible." : "Your support ticket has been created. Our team is looking into it and will reach out to you as soon as possible."}
         </p>
+        {state?.ref && <p className="mt-3 text-sm font-medium text-neutral-700">Reference: {state.ref}</p>}
         {state?.dryRun && <p className="mx-auto mt-4 max-w-sm rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">Development mode: submissions are disabled, nothing was sent to Odoo.</p>}
         <div className="mt-8 flex justify-center gap-3">
           <Link to="/support">

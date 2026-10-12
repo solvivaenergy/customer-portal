@@ -32,8 +32,6 @@ export function statusFromStage(stage: string): TicketStatus {
   return "In Progress";
 }
 
-export const PMS_SERVICE_TYPE = "Schedule a PMS";
-
 function toTicket(t: OdooTicket): Ticket {
   const stage = t.stage_id ? t.stage_id[1] : "New";
   const descriptionHtml = t.description || "";
@@ -141,53 +139,4 @@ export async function createTicket(t: NewTicket): Promise<void> {
       "submission-timestamp": stamp,
     });
   }
-}
-
-export type PmsRequest = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  siteAddress: string;
-  stationId: string;
-  preferredDate: string;
-  timeSlot: string;
-  alternativeDate: string;
-  roofHeight: string;
-  equipment: string[];
-  workPermit: string;
-  siteContactName: string;
-  siteContactPhone: string;
-  instructions: string;
-  condition: string;
-  concerns: string;
-};
-
-/** PMS requests ride the technical-ticket path with Service-Type "Schedule a PMS" (the Webflow form's value). */
-export async function createPmsRequest(r: PmsRequest): Promise<void> {
-  const lines = [
-    `Preferred date: ${r.preferredDate}${r.timeSlot ? ` (${r.timeSlot})` : ""}`,
-    r.alternativeDate ? `Alternative date: ${r.alternativeDate}` : null,
-    `Site address: ${r.siteAddress}`,
-    `Roof height: ${r.roofHeight || "not specified"}`,
-    `Rooftop access equipment: ${r.equipment.length ? r.equipment.join(", ") : "not specified"}`,
-    `Work permit: ${r.workPermit || "not specified"}`,
-    r.siteContactName ? `Site contact: ${r.siteContactName} ${r.siteContactPhone}`.trim() : null,
-    r.instructions ? `Additional instructions: ${r.instructions}` : null,
-    `System condition: ${r.condition || "not specified"}`,
-    r.concerns ? `Other concerns: ${r.concerns}` : null,
-    "Submitted from the Customer Portal (consent to site access given).",
-  ].filter(Boolean);
-  await postIntake({
-    "Plant-Reference-Number": r.stationId || "N/A",
-    "PV-Owner-Name": `${r.firstName} ${r.lastName}`.trim(),
-    Email: r.email,
-    Phone: r.phone || "N/A",
-    "Service-Type": PMS_SERVICE_TYPE,
-    "Detailed-Concern": "Preventive Maintenance Service request",
-    "Concern-Description": lines.join("\n"),
-    form_name: "solviva-support-technical-portal-pms",
-    "ticket-type": "technical",
-    "submission-timestamp": manilaTimestamp(),
-  });
 }

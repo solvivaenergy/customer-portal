@@ -4,11 +4,10 @@ import { Check } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Button, Card, ErrorNotice, Field, Input, PageHeader, Textarea, cx } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
-import { createPmsRequest, type PmsRequest } from "@/lib/tickets";
-import { invalidateTickets } from "@/lib/useTickets";
-import { env } from "@/lib/env";
+import { createMaintenanceRequest, PMS_MIN_LEAD_DAYS, type PmsForm } from "@/lib/pms";
+import { invalidatePms } from "@/lib/usePms";
 import { PMS } from "@/content/contact";
-import { todayKey } from "@/lib/energy";
+import { addDays, manilaDateKey, manilaToday } from "@/lib/format";
 
 const STEPS = ["Client & site information", "Preferred schedule", "Site access", "System condition"];
 const TIME_SLOTS = [
@@ -52,7 +51,7 @@ export default function PmsRequestPage() {
   const navigate = useNavigate();
   const name = splitName(profile?.full_name ?? profile?.odoo_customer_name ?? "");
   const [step, setStep] = useState(0);
-  const [f, setF] = useState<PmsRequest>({
+  const [f, setF] = useState<PmsForm>({
     firstName: name.first,
     lastName: name.last,
     email: profile?.email ?? "",
@@ -75,7 +74,8 @@ export default function PmsRequestPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const set = <K extends keyof PmsRequest>(k: K, v: PmsRequest[K]) => setF((s) => ({ ...s, [k]: v }));
+  const minDate = manilaDateKey(addDays(manilaToday(), PMS_MIN_LEAD_DAYS));
+  const set = <K extends keyof PmsForm>(k: K, v: PmsForm[K]) => setF((s) => ({ ...s, [k]: v }));
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
@@ -88,7 +88,7 @@ export default function PmsRequestPage() {
     }
     if (step === 1) {
       if (!f.preferredDate) e.preferredDate = "Pick a date";
-      else if (f.preferredDate < todayKey()) e.preferredDate = "Pick a future date";
+      else if (f.preferredDate < minDate) e.preferredDate = `Pick a date at least ${PMS_MIN_LEAD_DAYS} days from today`;
       if (!f.timeSlot) e.timeSlot = "Pick a time slot";
     }
     if (step === 2 && !f.roofHeight) e.roofHeight = "Tell us how high the roof is";
@@ -108,9 +108,9 @@ export default function PmsRequestPage() {
     setBusy(true);
     setError(null);
     try {
-      await createPmsRequest(f);
-      if (profile?.email) invalidateTickets(profile.email);
-      navigate("/support/success", { state: { kind: "pms", dryRun: !env.submissionsEnabled } });
+      const { id, dryRun } = await createMaintenanceRequest(f, { partnerId: profile?.odoo_partner_id ?? null, leadId: system?.odoo_lead_id ?? null });
+      invalidatePms();
+      navigate("/support/success", { state: { kind: "pms", dryRun, ref: id ? `PMS-${id}` : undefined } });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -166,8 +166,8 @@ export default function PmsRequestPage() {
 
           {step === 1 && (
             <div className="mt-6 flex flex-col gap-6">
-              <Field label="Preferred date" required error={errors.preferredDate}>
-                <Input type="date" min={todayKey()} value={f.preferredDate} onChange={(e) => set("preferredDate", e.target.value)} invalid={!!errors.preferredDate} className="sm:max-w-xs" />
+              <Field label="Preferred date" required error={errors.preferredDate} hint={`At least ${PMS_MIN_LEAD_DAYS} days from today so our team can plan the visit`}>
+                <Input type="date" min={minDate} value={f.preferredDate} onChange={(e) => set("preferredDate", e.target.value)} invalid={!!errors.preferredDate} className="sm:max-w-xs" />
               </Field>
               <div>
                 <p className="mb-2 text-sm font-medium text-neutral-700">
@@ -181,7 +181,7 @@ export default function PmsRequestPage() {
                 {errors.timeSlot && <p className="mt-1.5 text-sm text-red-700">{errors.timeSlot}</p>}
               </div>
               <Field label="Alternative date" hint="Optional">
-                <Input type="date" min={todayKey()} value={f.alternativeDate} onChange={(e) => set("alternativeDate", e.target.value)} className="sm:max-w-xs" />
+                <Input type="date" min={minDate} value={f.alternativeDate} onChange={(e) => set("alternativeDate", e.target.value)} className="sm:max-w-xs" />
               </Field>
             </div>
           )}
