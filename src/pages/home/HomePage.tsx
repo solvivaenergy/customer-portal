@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { BatteryCharging, ChevronLeft, ChevronRight, Coins, Handshake, Share2, Zap } from "lucide-react";
+import { BatteryCharging, ChevronLeft, ChevronRight, Share2, Zap } from "lucide-react";
+import { CoinsIcon, HandshakeIcon } from "@/components/icons";
 import { usePortal } from "@/lib/portal";
 import { api } from "@/lib/api";
 import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, shiftPeriod, todayKey, type Aggregate, type Period, type RangeId } from "@/lib/energy";
@@ -240,7 +241,7 @@ export default function HomePage() {
             <Card className="transition-shadow hover:shadow-sm">
               <div className="flex items-start justify-between">
                 <p className="text-base text-neutral-600">Total savings from solar</p>
-                <Coins className="h-6 w-6 text-brand-absinthe" />
+                <CoinsIcon className="h-8 w-8" />
               </div>
               <p className="mt-2 text-2xl font-semibold text-neutral-900">{life ? php(life.savings) : "—"}</p>
               {sinceLabel && <p className="mt-1 text-xs text-neutral-500">Since {sinceLabel} · {kwh(life?.production ?? 0)} produced</p>}
@@ -250,7 +251,7 @@ export default function HomePage() {
             <Card className="transition-shadow hover:shadow-sm">
               <div className="flex items-start justify-between">
                 <p className="text-base text-neutral-600">Referral earnings</p>
-                <Handshake className="h-6 w-6 text-brand-absinthe" />
+                <HandshakeIcon className="h-8 w-8" />
               </div>
               <p className="mt-2 text-2xl font-semibold text-neutral-900">{php(referralEarnings, { decimals: 0 })}</p>
               <Badge tone="neutral" className="mt-2">

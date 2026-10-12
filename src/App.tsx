@@ -1,4 +1,8 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+
+// Dev-only brand preview; the conditional route below is dropped from production builds.
+const DevPreviewPage = lazy(() => import("./pages/DevPreviewPage"));
 import { useAuth } from "./auth/AuthProvider";
 import { PortalProvider } from "./lib/portal";
 import { AppShell } from "./layout/AppShell";
@@ -71,6 +75,16 @@ export default function App() {
         <Route path="/account/:tab" element={<AccountPage />} />
       </Route>
 
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/preview"
+          element={
+            <Suspense fallback={null}>
+              <DevPreviewPage />
+            </Suspense>
+          }
+        />
+      )}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

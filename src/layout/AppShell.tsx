@@ -6,21 +6,9 @@ import { usePortal } from "@/lib/portal";
 import { useWeather } from "@/lib/weather";
 import { cx } from "@/components/ui";
 import { initials } from "@/lib/format";
-import { asset } from "@/lib/env";
+import { Logo } from "@/components/Logo";
 
 const NOTIFICATION_COUNT = 0; // No notification source yet (see docs/integrations.md).
-
-function Logo() {
-  return (
-    <Link to="/" className="flex items-center gap-2.5" aria-label="Solviva home">
-      <img src={asset("brand/solviva-mark-green.png")} alt="" className="h-9 w-9 rounded-full bg-brand-chartreuse p-1" />
-      <span className="leading-tight">
-        <span className="block text-lg font-bold tracking-wide text-white">SOLVIVA</span>
-        <span className="block text-[10px] text-white/70">An AboitizPower Company</span>
-      </span>
-    </Link>
-  );
-}
 
 function NavItem({ to, icon, label, badge, end }: { to: string; icon: ReactNode; label: string; badge?: number; end?: boolean }) {
   return (
