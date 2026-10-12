@@ -213,18 +213,36 @@ function ChangePasswordModal({ open, onClose, onChange }: { open: boolean; onClo
 /* ------------------------------------------------------------------ System */
 
 function SystemTab() {
-  const { system, systems, selectSystem, providerFor } = usePortal();
+  const { system, systems, selectSystem, providerFor, detailsFor } = usePortal();
   const provider = providerFor(system);
+  const d = detailsFor(system);
   if (!system)
     return (
       <Section title="System details" subtitle="See your system information">
         <p className="pt-5 text-sm text-neutral-500">No solar system is linked to this account yet.</p>
       </Section>
     );
+  const kwp = system.capacity_kwp || d?.systemSizeKwp || null;
+  const batteryKwh = system.battery_capacity_kwh || d?.battery?.totalKwh || null;
+  const batteryLine = d?.battery
+    ? `${batteryKwh ? `${num(batteryKwh)} kWh ` : ""}Battery Storage${d.battery.brand ? ` · ${d.battery.brand}${d.battery.model ? ` ${d.battery.model}` : ""}` : ""}${d.battery.units > 1 ? ` × ${d.battery.units}` : ""}`
+    : batteryKwh
+      ? `${num(batteryKwh)} kWh Battery Storage`
+      : null;
+  const inverterLine = d?.inverter ? `${[d.inverter.brand, d.inverter.model].filter(Boolean).join(" ") || "Inverter"}${d.inverter.kwPerUnit ? ` ${num(d.inverter.kwPerUnit, 1)} kW` : ""}${d.inverter.units > 1 ? ` × ${d.inverter.units}` : ""}` : null;
   const items: [string, ReactNode][] = [
-    ["System", `${system.capacity_kwp ? `${num(system.capacity_kwp, 2)} kWp Solar Power System` : "Solar Power System"}${system.battery_capacity_kwh ? ` · ${num(system.battery_capacity_kwh)} kWh Battery Storage` : ""}`],
+    [
+      "System details",
+      <div className="flex flex-col gap-1">
+        <span>{kwp ? `${num(kwp, 2)} kWp Solar Power System` : "Solar Power System"}</span>
+        {batteryLine && <span>{batteryLine}</span>}
+        {inverterLine && <span className="text-neutral-500">Inverter: {inverterLine}</span>}
+      </div>,
+    ],
     ["Site address", system.address || "—"],
     ["Installation date", system.installation_date ? longDate(system.installation_date) : "—"],
+    ["Energization date", d?.energizationDate ? longDate(d.energizationDate) : "—"],
+    ["Sales representative", d?.salesRep || "—"],
     ["Plant name (Solis)", system.solis_plant_name || "—"],
     ["Site ID", system.solis_station_id || "—"],
     ["Electricity provider", provider ? `${provider.name} (${provider.code})` : "—"],

@@ -5,6 +5,7 @@
 | Login, reset password, change password | Supabase Auth (monitoring project) | Reset mail uses Supabase's default sender until custom SMTP (SES) is configured in Auth settings. Redirect URL `http://localhost:5173/reset-password` must be in Auth → URL configuration for the link to work in dev. |
 | Profile | `user_profiles` (own row; RLS) | Editable: full name, phone, address. Email is the auth email. Odoo stays the system of record; edits are local to Supabase. |
 | Systems / site selector | `solar_systems` (own + `system_access` grants; RLS) | Selector appears only when more than one system is visible. The monitoring API answers for the login's primary station only, so live data is used just for that site. |
+| System details: battery, inverter, energisation date, sales rep | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-system` `{lead_ids}` → `crm.lead` fields (`x_studio_crm_*_battery`, `x_studio_crm_*_inverter`, `x_studio_energization_date`, `user_id`) | Since 2026-10-12. `solar_systems.battery_capacity_kwh` is empty for every system (the nightly Solis lookup finds nothing), so the lead is the source; battery kWh = quantity × size per unit. Longer term the nightly mirror should copy these into `solar_systems` so no Odoo round-trip is needed. |
 | Daily history, 1W/1M/1Y/YTD | `energy_readings` (one row per day, noon-Manila timestamp) | Today's row is a zero placeholder until the 02:00 sync; the Home page patches today from `/app/live`, including `today_battery_discharge_kwh` (since 2026-10-09; before that today's Battery share was always 0.0). Past days' Battery = `battery_discharge_kwh`, Solis's settled day total. |
 | 1D view | `/app/hourly` (today, live from the five-minute cache) / `energy_readings_hourly` (past days) | Battery share per hour = `battery_discharge_kwh`, integrated from the five-minute curve (monitoring migration 24, 2026-10-09). Hours stored before that date hold 0 until the fleet hourly re-read; the integrated day can differ from the daily table's Solis figure by a few kWh. |
 | Battery card | `/app/live` + latest `energy_readings_five_minutes` row | Systems with no battery show a "No battery storage" card. |
@@ -30,6 +31,11 @@ team project, cloned from the production ones but aimed at the odoo.sh **staging
 | `[STAGING] Portal Get My Tickets → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-tickets` | JSON-RPC authenticate + `search_read` (`partner_email ilike`), fields incl. `ticket_ref`/`team_id`/`tag_ids`; Odoo errors are returned as `{error}` instead of `[]`. |
 | `[STAGING] Portal Get My PMS → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-pms` | `maintenance.request` `search_read` by `x_pms_email` / `x_pms_partner_id` / `x_pms_crm_lead_id`. |
 | `[STAGING] Portal PMS Request → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/pms-request` | Code node maps the wizard payload like `solvivaenergy/pms` `server.js` does, then `maintenance.request` `create`; answers `{id}`. |
+| `[STAGING] Portal Get My System → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-system` | `crm.lead` `search_read` by lead ids (max 20): equipment, energisation date, sales rep. |
+
+**Security note for production:** these webhooks trust the identifiers the browser sends (email, partner id,
+lead ids). Before go-live the lookups must verify the Supabase JWT and derive the identifiers server-side
+(the monitoring API already does this for `/app/*`), otherwise one customer can request another's data.
 
 The `Ticket_*` variables are **project-scoped**; a workflow created through the API lands in the key
 owner's personal project where they resolve to `undefined`, so the script transfers each workflow into

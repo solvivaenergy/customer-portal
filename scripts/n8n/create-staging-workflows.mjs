@@ -280,6 +280,52 @@ return [{ json: { vals } }];`,
   };
 }
 
+/* ------------------------------------------------------- System details (crm.lead, read-only) */
+
+const LEAD_FIELDS = [
+  "id", "name", "x_studio_crm_design_solis_station_id", "x_studio_crm_contract_system_size_kwp", "x_studio_system_size_kwp",
+  "x_studio_crm_brand_battery", "x_studio_crm_model_battery", "x_studio_crm_quantity_battery", "x_studio_crm_size_per_unit_kwh_battery",
+  "x_studio_crm_brand_inverter", "x_studio_crm_model_inverter", "x_studio_crm_quantity_inverter", "x_studio_crm_size_per_unit_kw_inverter",
+  "x_studio_energization_date", "user_id",
+];
+
+/** Battery / inverter / energisation / sales rep for the login's own CRM leads (the nightly mirror does not copy these yet). */
+function buildSystemDetails(prodList) {
+  const webhook = clone(prodList, "Webhook");
+  webhook.position = [0, 300];
+  webhook.parameters = { ...webhook.parameters, httpMethod: "POST", path: "staging/get-my-system", responseMode: "responseNode" };
+
+  const auth = clone(prodList, "Odoo Authenticate");
+  auth.position = [260, 300];
+  auth.parameters.url = STAGING_JSONRPC;
+  auth.parameters.body = "=" + JSON.stringify({ jsonrpc: "2.0", method: "call", id: 1, params: { service: "common", method: "authenticate", args: ["{{ $vars.ODOO_SH_STAGING_DB }}", "{{ $vars.ODOO_SH_STAGING_USER }}", "{{ $vars.ODOO_SH_STAGING_KEY }}", {}] } });
+
+  const search = clone(prodList, "Odoo Search Tickets");
+  search.name = "Odoo Read Leads";
+  search.position = [520, 300];
+  search.parameters.url = STAGING_JSONRPC;
+  search.parameters.body =
+    "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 2, params: { service: 'object', method: 'execute_kw', args: [" +
+    "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'crm.lead', 'search_read', " +
+    "[[ ['id', 'in', ($('Webhook').item.json.body.lead_ids || []).map(Number).filter(Boolean).slice(0, 20)] ]], " +
+    `{ fields: ${JSON.stringify(LEAD_FIELDS)}, limit: 20 }] } }) }}`;
+
+  const respond = clone(prodList, "Respond to Webhook");
+  respond.position = [780, 300];
+  respond.parameters.responseBody = "={{ JSON.stringify($json.result ?? { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
+
+  return {
+    name: "[STAGING] Portal Get My System → Odoo",
+    nodes: [webhook, auth, search, respond],
+    connections: {
+      Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
+      "Odoo Authenticate": { main: [[{ node: "Odoo Read Leads", type: "main", index: 0 }]] },
+      "Odoo Read Leads": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
+    },
+    settings: { executionOrder: "v1" },
+  };
+}
+
 // Team project that owns the production workflows AND the project-scoped Ticket_* variables.
 // A workflow created through the API lands in the key owner's personal project, where those
 // variables resolve to undefined, so each workflow is transferred here after creation.
@@ -313,4 +359,5 @@ await upsert(buildIntake(prodIntake));
 await upsert(buildList(prodList));
 await upsert(buildPmsList(prodList));
 await upsert(buildPmsCreate(prodList));
-console.log(`\nwebhooks:\n  ${BASE}/webhook/staging/webflow-customer-support\n  ${BASE}/webhook/staging/get-my-tickets\n  ${BASE}/webhook/staging/get-my-pms\n  ${BASE}/webhook/staging/pms-request`);
+await upsert(buildSystemDetails(prodList));
+console.log(`\nwebhooks:\n  ${BASE}/webhook/staging/webflow-customer-support\n  ${BASE}/webhook/staging/get-my-tickets\n  ${BASE}/webhook/staging/get-my-pms\n  ${BASE}/webhook/staging/pms-request\n  ${BASE}/webhook/staging/get-my-system`);

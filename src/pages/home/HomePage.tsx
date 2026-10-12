@@ -68,7 +68,7 @@ function usePeriod(initial: RangeId) {
 /* ------------------------------------------------------------------ page */
 
 export default function HomePage() {
-  const { profile, system, systems, selectSystem, rates, providerFor, loading, error } = usePortal();
+  const { profile, system, systems, selectSystem, rates, providerFor, detailsFor, loading, error } = usePortal();
   const providerId = system?.electricity_provider_id ?? profile?.electricity_provider_id ?? null;
   const provider = providerFor(system);
   // The monitoring API answers for the login's own station; only use it when that is the selected site.
@@ -169,7 +169,8 @@ export default function HomePage() {
 
   const batteryLevel = live?.battery_level ?? latest5?.battery_level ?? null;
   const batteryStatus = live?.battery_status ?? latest5?.battery_status ?? null;
-  const hasBattery = (system.battery_capacity_kwh ?? 0) > 0 || batteryLevel != null;
+  const batteryKwh = system.battery_capacity_kwh || detailsFor(system)?.battery?.totalKwh || null;
+  const hasBattery = batteryKwh != null || batteryLevel != null;
   const perfHasConsumption = perfAgg ? perfAgg.consumption != null : true;
   const split = perfAgg && perfAgg.consumption ? { grid: perfAgg.grid / perfAgg.consumption, solar: perfAgg.solar / perfAgg.consumption, battery: perfAgg.battery / perfAgg.consumption } : null;
   const selfShare = split ? Math.round((split.solar + split.battery) * 100) : null;
@@ -372,7 +373,7 @@ export default function HomePage() {
                   <div className="h-full bg-brand-chartreuse" style={{ width: `${Math.max(0, Math.min(100, batteryLevel ?? 0))}%` }} />
                   <span className="absolute inset-y-0 left-3 flex items-center text-lg font-semibold text-brand-dark">{batteryLevel != null ? `${Math.round(batteryLevel)}%` : "—"}</span>
                 </div>
-                <p className="mt-3 text-sm text-neutral-600">{system.battery_capacity_kwh ? `${num(system.battery_capacity_kwh)} kWh battery` : "Battery storage"}</p>
+                <p className="mt-3 text-sm text-neutral-600">{batteryKwh ? `${num(batteryKwh)} kWh battery` : "Battery storage"}</p>
               </>
             ) : (
               <div className="flex items-start gap-3">

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "./supabase";
 import { useAuth } from "@/auth/AuthProvider";
+import { fetchSystemDetails, type SystemDetails } from "./system";
 import type { Profile, Provider, Rate, SolarSystem } from "./types";
 
 type PortalState = {
@@ -11,6 +12,8 @@ type PortalState = {
   providers: Provider[];
   rates: Rate[];
   providerFor: (s: SolarSystem | null) => Provider | null;
+  /** Equipment details from the CRM lead (battery, inverter, energisation, sales rep); null while loading or when unavailable. */
+  detailsFor: (s: SolarSystem | null) => SystemDetails | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -27,8 +30,22 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [rates, setRates] = useState<Rate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(() => localStorage.getItem(SELECTED_KEY));
+  const [details, setDetails] = useState<Record<number, SystemDetails>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Lead-based equipment details, fetched once the systems are known; failures only hide the extra rows.
+  useEffect(() => {
+    const ids = systems.map((s) => s.odoo_lead_id).filter((x): x is number => typeof x === "number");
+    if (!ids.length) return;
+    let alive = true;
+    fetchSystemDetails(ids)
+      .then((d) => alive && setDetails(d))
+      .catch((e) => console.warn("system details unavailable:", e.message));
+    return () => {
+      alive = false;
+    };
+  }, [systems]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -75,6 +92,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       providers,
       rates,
       providerFor: (s) => providers.find((p) => p.id === (s?.electricity_provider_id ?? profile?.electricity_provider_id)) ?? null,
+      detailsFor: (s) => (s?.odoo_lead_id != null ? (details[s.odoo_lead_id] ?? null) : null),
       loading,
       error,
       refresh: load,
@@ -85,7 +103,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         setProfile((p) => (p ? { ...p, ...patch } : p));
       },
     }),
-    [profile, systems, system, providers, rates, loading, error, load, user],
+    [profile, systems, system, providers, rates, details, loading, error, load, user],
   );
 
   return <PortalContext.Provider value={value}>{children}</PortalContext.Provider>;
