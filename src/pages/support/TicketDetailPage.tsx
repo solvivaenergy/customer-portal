@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronDown, Inbox } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
-import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Spinner, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Collapse, EmptyState, ErrorNotice, PageHeader, Spinner, Textarea } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
 import { dateTime, initials, relative } from "@/lib/format";
@@ -24,7 +24,7 @@ export default function TicketDetailPage() {
     );
 
   return (
-    <>
+    <div className="anim-fade-in">
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "Support", to: "/support" }, { label: ticket?.ref ?? `#${id}` }]} />
       {error && <ErrorNotice message={error} />}
       {!ticket ? (
@@ -76,7 +76,7 @@ export default function TicketDetailPage() {
                 Activity
                 <ChevronDown className={`h-4 w-4 transition-transform ${activityOpen ? "rotate-180" : ""}`} />
               </button>
-              {activityOpen && (
+              <Collapse open={activityOpen}>
                 <ul className="mt-4 flex flex-col gap-5">
                   <li className="flex gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-light text-xs font-semibold text-brand-dark">SC</span>
@@ -99,11 +99,11 @@ export default function TicketDetailPage() {
                     </div>
                   </li>
                 </ul>
-              )}
+              </Collapse>
             </Card>
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }

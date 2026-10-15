@@ -27,7 +27,7 @@ function ChoiceCard({ selected, onClick, title, sub, multi }: { selected: boolea
         <span className="block text-base font-semibold text-neutral-900">{title}</span>
         {sub && <span className="mt-1 block text-sm text-neutral-500">{sub}</span>}
       </span>
-      <span className={cx("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border", multi ? "rounded" : "rounded-full", selected ? "border-brand-dark bg-brand-dark text-white" : "border-neutral-300 bg-white")}>{selected && <Check className="h-3.5 w-3.5" />}</span>
+      <span className={cx("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border transition-colors", multi ? "rounded" : "rounded-full", selected ? "border-brand-dark bg-brand-dark text-white" : "border-neutral-300 bg-white")}>{selected && <Check className="anim-pop-in h-3.5 w-3.5" />}</span>
     </button>
   );
 }
@@ -128,8 +128,8 @@ export default function PmsRequestPage() {
         <ol className="flex flex-col gap-5">
           {STEPS.map((s, i) => (
             <li key={s} className="flex items-center gap-3">
-              <span className={cx("flex h-7 w-7 items-center justify-center rounded-full border text-sm font-semibold", i === step ? "border-brand-olive bg-green-50 text-brand-olive" : i < step ? "border-brand-olive bg-brand-olive text-white" : "border-neutral-300 text-neutral-500")}>{i < step ? <Check className="h-4 w-4" /> : i + 1}</span>
-              <span className={cx("text-base", i === step ? "font-semibold text-neutral-900" : "text-neutral-500")}>{s}</span>
+              <span className={cx("flex h-7 w-7 items-center justify-center rounded-full border text-sm font-semibold transition-colors duration-300", i === step ? "border-brand-olive bg-green-50 text-brand-olive" : i < step ? "border-brand-olive bg-brand-olive text-white" : "border-neutral-300 text-neutral-500")}>{i < step ? <Check className="h-4 w-4" /> : i + 1}</span>
+              <span className={cx("text-base transition-colors duration-300", i === step ? "font-semibold text-neutral-900" : "text-neutral-500")}>{s}</span>
             </li>
           ))}
         </ol>
@@ -144,98 +144,101 @@ export default function PmsRequestPage() {
             </div>
           )}
 
-          {step === 0 && (
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <Field label="First name" required error={errors.firstName}>
-                <Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} invalid={!!errors.firstName} />
-              </Field>
-              <Field label="Last name" required error={errors.lastName}>
-                <Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} invalid={!!errors.lastName} />
-              </Field>
-              <Field label="Email address" required error={errors.email}>
-                <Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} invalid={!!errors.email} />
-              </Field>
-              <Field label="Contact number" required error={errors.phone}>
-                <Input type="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} invalid={!!errors.phone} />
-              </Field>
-              <Field label="Site / installation address" required error={errors.siteAddress} className="sm:col-span-2">
-                <Input value={f.siteAddress} onChange={(e) => set("siteAddress", e.target.value)} invalid={!!errors.siteAddress} />
-              </Field>
-            </div>
-          )}
+          {/* Keyed by step so each step eases in instead of swapping. */}
+          <div key={step} className="anim-fade-up">
+            {step === 0 && (
+              <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                <Field label="First name" required error={errors.firstName}>
+                  <Input value={f.firstName} onChange={(e) => set("firstName", e.target.value)} invalid={!!errors.firstName} />
+                </Field>
+                <Field label="Last name" required error={errors.lastName}>
+                  <Input value={f.lastName} onChange={(e) => set("lastName", e.target.value)} invalid={!!errors.lastName} />
+                </Field>
+                <Field label="Email address" required error={errors.email}>
+                  <Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} invalid={!!errors.email} />
+                </Field>
+                <Field label="Contact number" required error={errors.phone}>
+                  <Input type="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} invalid={!!errors.phone} />
+                </Field>
+                <Field label="Site / installation address" required error={errors.siteAddress} className="sm:col-span-2">
+                  <Input value={f.siteAddress} onChange={(e) => set("siteAddress", e.target.value)} invalid={!!errors.siteAddress} />
+                </Field>
+              </div>
+            )}
 
-          {step === 1 && (
-            <div className="mt-6 flex flex-col gap-6">
-              <Field label="Preferred date" required error={errors.preferredDate} hint={`At least ${PMS_MIN_LEAD_DAYS} days from today so our team can plan the visit`}>
-                <Input type="date" min={minDate} value={f.preferredDate} onChange={(e) => set("preferredDate", e.target.value)} invalid={!!errors.preferredDate} className="sm:max-w-xs" />
-              </Field>
-              <div>
-                <p className="mb-2 text-sm font-medium text-neutral-700">
-                  Preferred time slot <span className="text-red-700">*</span>
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {TIME_SLOTS.map((t) => (
-                    <ChoiceCard key={t.id} selected={f.timeSlot === t.id} onClick={() => set("timeSlot", t.id)} title={t.title} sub={t.sub} />
-                  ))}
+            {step === 1 && (
+              <div className="mt-6 flex flex-col gap-6">
+                <Field label="Preferred date" required error={errors.preferredDate} hint={`At least ${PMS_MIN_LEAD_DAYS} days from today so our team can plan the visit`}>
+                  <Input type="date" min={minDate} value={f.preferredDate} onChange={(e) => set("preferredDate", e.target.value)} invalid={!!errors.preferredDate} className="sm:max-w-xs" />
+                </Field>
+                <div>
+                  <p className="mb-2 text-sm font-medium text-neutral-700">
+                    Preferred time slot <span className="text-red-700">*</span>
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {TIME_SLOTS.map((t) => (
+                      <ChoiceCard key={t.id} selected={f.timeSlot === t.id} onClick={() => set("timeSlot", t.id)} title={t.title} sub={t.sub} />
+                    ))}
+                  </div>
+                  {errors.timeSlot && <p className="mt-1.5 text-sm text-red-700">{errors.timeSlot}</p>}
                 </div>
-                {errors.timeSlot && <p className="mt-1.5 text-sm text-red-700">{errors.timeSlot}</p>}
-              </div>
-              <Field label="Alternative date" hint="Optional">
-                <Input type="date" min={minDate} value={f.alternativeDate} onChange={(e) => set("alternativeDate", e.target.value)} className="sm:max-w-xs" />
-              </Field>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="mt-6 flex flex-col gap-6">
-              <Group label="How high is your roof from the ground? *">
-                {ROOF.map((r) => (
-                  <ChoiceCard key={r} selected={f.roofHeight === r} onClick={() => set("roofHeight", r)} title={r} />
-                ))}
-              </Group>
-              {errors.roofHeight && <p className="-mt-4 text-sm text-red-700">{errors.roofHeight}</p>}
-              <Group label="Required equipment to access rooftop (select all that apply)">
-                {EQUIPMENT.map((r) => (
-                  <ChoiceCard key={r} multi selected={f.equipment.includes(r)} onClick={() => toggleEquipment(r)} title={r} />
-                ))}
-              </Group>
-              <Group label="Work permit required?">
-                {PERMIT.map((r) => (
-                  <ChoiceCard key={r} selected={f.workPermit === r} onClick={() => set("workPermit", r)} title={r} />
-                ))}
-              </Group>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Site contact person" hint="If different from the client information">
-                  <Input value={f.siteContactName} onChange={(e) => set("siteContactName", e.target.value)} />
-                </Field>
-                <Field label="Site contact no.">
-                  <Input type="tel" value={f.siteContactPhone} onChange={(e) => set("siteContactPhone", e.target.value)} />
+                <Field label="Alternative date" hint="Optional">
+                  <Input type="date" min={minDate} value={f.alternativeDate} onChange={(e) => set("alternativeDate", e.target.value)} className="sm:max-w-xs" />
                 </Field>
               </div>
-              <Field label="Additional instructions" hint="Optional">
-                <Textarea value={f.instructions} onChange={(e) => set("instructions", e.target.value)} placeholder="e.g., gate code, parking, requirements" className="min-h-[90px]" />
-              </Field>
-            </div>
-          )}
+            )}
 
-          {step === 3 && (
-            <div className="mt-6 flex flex-col gap-6">
-              <Group label="Have you noticed any issues with your system? *">
-                {CONDITION.map((r) => (
-                  <ChoiceCard key={r} selected={f.condition === r} onClick={() => set("condition", r)} title={r} />
-                ))}
-              </Group>
-              {errors.condition && <p className="-mt-4 text-sm text-red-700">{errors.condition}</p>}
-              <Field label="Other concerns or questions" hint="Optional">
-                <Textarea value={f.concerns} onChange={(e) => set("concerns", e.target.value)} className="min-h-[90px]" />
-              </Field>
-              <label className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
-                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-brand-dark" />
-                <span>{PMS.consent}</span>
-              </label>
-              {errors.consent && <p className="-mt-4 text-sm text-red-700">{errors.consent}</p>}
-            </div>
-          )}
+            {step === 2 && (
+              <div className="mt-6 flex flex-col gap-6">
+                <Group label="How high is your roof from the ground? *">
+                  {ROOF.map((r) => (
+                    <ChoiceCard key={r} selected={f.roofHeight === r} onClick={() => set("roofHeight", r)} title={r} />
+                  ))}
+                </Group>
+                {errors.roofHeight && <p className="-mt-4 text-sm text-red-700">{errors.roofHeight}</p>}
+                <Group label="Required equipment to access rooftop (select all that apply)">
+                  {EQUIPMENT.map((r) => (
+                    <ChoiceCard key={r} multi selected={f.equipment.includes(r)} onClick={() => toggleEquipment(r)} title={r} />
+                  ))}
+                </Group>
+                <Group label="Work permit required?">
+                  {PERMIT.map((r) => (
+                    <ChoiceCard key={r} selected={f.workPermit === r} onClick={() => set("workPermit", r)} title={r} />
+                  ))}
+                </Group>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Site contact person" hint="If different from the client information">
+                    <Input value={f.siteContactName} onChange={(e) => set("siteContactName", e.target.value)} />
+                  </Field>
+                  <Field label="Site contact no.">
+                    <Input type="tel" value={f.siteContactPhone} onChange={(e) => set("siteContactPhone", e.target.value)} />
+                  </Field>
+                </div>
+                <Field label="Additional instructions" hint="Optional">
+                  <Textarea value={f.instructions} onChange={(e) => set("instructions", e.target.value)} placeholder="e.g., gate code, parking, requirements" className="min-h-[90px]" />
+                </Field>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="mt-6 flex flex-col gap-6">
+                <Group label="Have you noticed any issues with your system? *">
+                  {CONDITION.map((r) => (
+                    <ChoiceCard key={r} selected={f.condition === r} onClick={() => set("condition", r)} title={r} />
+                  ))}
+                </Group>
+                {errors.condition && <p className="-mt-4 text-sm text-red-700">{errors.condition}</p>}
+                <Field label="Other concerns or questions" hint="Optional">
+                  <Textarea value={f.concerns} onChange={(e) => set("concerns", e.target.value)} className="min-h-[90px]" />
+                </Field>
+                <label className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+                  <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-brand-dark" />
+                  <span>{PMS.consent}</span>
+                </label>
+                {errors.consent && <p className="-mt-4 text-sm text-red-700">{errors.consent}</p>}
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

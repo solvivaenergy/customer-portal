@@ -6,7 +6,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
   return (
     <div className="flex min-h-screen flex-col bg-brand-dark">
       <div className="flex flex-1 items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+        <div className="anim-pop-in w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8">
             <Logo variant="dark" size="lg" linkTo={null} />
           </div>

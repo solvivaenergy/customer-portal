@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SeriesPoint } from "@/lib/energy";
 import { php, phpShort, num } from "@/lib/format";
@@ -5,6 +6,8 @@ import { php, phpShort, num } from "@/lib/format";
 const COLORS = { grid: "#1f522b", solar: "#8be114", battery: "#def0d8", line: "#15803d", fill: "#f0fdf4", production: "#8be114", divider: "#98a2b3" };
 
 const axisStyle = { fontSize: 12, fill: "#667085" };
+// Short ease when the period changes; the data arrays are memoised so an unrelated re-render does not replay it.
+const ANIM = { isAnimationActive: true, animationDuration: 500, animationEasing: "ease-out" } as const;
 
 /** Vertical year marker: drawn at the start of the `x` category (i.e. between December and January). */
 export type YearDivider = { x: string; year: string };
@@ -30,9 +33,9 @@ function TooltipBox({ title, rows }: { title: string; rows: { label: string; val
 }
 
 export function SavingsChart({ points, interval, divider }: { points: SeriesPoint[]; interval?: number; divider?: YearDivider | null }) {
-  const data = points.map((p) => ({ ...p, savings: Math.round(p.savings * 100) / 100 }));
+  const data = useMemo(() => points.map((p) => ({ ...p, savings: Math.round(p.savings * 100) / 100 })), [points]);
   return (
-    <div className="h-64 w-full">
+    <div className="anim-fade-in h-64 w-full">
       <ResponsiveContainer>
         <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>
@@ -52,7 +55,7 @@ export function SavingsChart({ points, interval, divider }: { points: SeriesPoin
             }
           />
           <YearLine divider={divider} />
-          <Area type="monotone" dataKey="savings" stroke={COLORS.line} strokeWidth={2} fill="url(#savingsFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
+          <Area type="monotone" dataKey="savings" stroke={COLORS.line} strokeWidth={2} fill="url(#savingsFill)" dot={false} activeDot={{ r: 4 }} {...ANIM} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -60,9 +63,9 @@ export function SavingsChart({ points, interval, divider }: { points: SeriesPoin
 }
 
 export function ConsumptionChart({ points, hasConsumption, interval, divider }: { points: SeriesPoint[]; hasConsumption: boolean; interval?: number; divider?: YearDivider | null }) {
-  const data = points.map((p) => ({ ...p, grid: round1(p.grid), solar: round1(p.solar), battery: round1(p.battery), production: round1(p.production) }));
+  const data = useMemo(() => points.map((p) => ({ ...p, grid: round1(p.grid), solar: round1(p.solar), battery: round1(p.battery), production: round1(p.production) })), [points]);
   return (
-    <div className="h-64 w-full">
+    <div className="anim-fade-in h-64 w-full">
       <ResponsiveContainer>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
@@ -87,12 +90,12 @@ export function ConsumptionChart({ points, hasConsumption, interval, divider }: 
           <YearLine divider={divider} />
           {hasConsumption ? (
             <>
-              <Bar dataKey="grid" stackId="c" fill={COLORS.grid} isAnimationActive={false} />
-              <Bar dataKey="solar" stackId="c" fill={COLORS.solar} isAnimationActive={false} />
-              <Bar dataKey="battery" stackId="c" fill={COLORS.battery} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="grid" stackId="c" fill={COLORS.grid} {...ANIM} />
+              <Bar dataKey="solar" stackId="c" fill={COLORS.solar} {...ANIM} />
+              <Bar dataKey="battery" stackId="c" fill={COLORS.battery} radius={[4, 4, 0, 0]} {...ANIM} />
             </>
           ) : (
-            <Bar dataKey="production" fill={COLORS.production} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="production" fill={COLORS.production} radius={[4, 4, 0, 0]} {...ANIM} />
           )}
         </BarChart>
       </ResponsiveContainer>

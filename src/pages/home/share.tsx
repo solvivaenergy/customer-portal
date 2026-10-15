@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, Copy, Facebook, Instagram, Linkedin, Send, Twitter } from "lucide-react";
-import { Button, Modal } from "@/components/ui";
+import { Button, Modal, Overlay, cx, usePresence } from "@/components/ui";
 import { php } from "@/lib/format";
 import { REFERRAL } from "@/content/contact";
 
@@ -84,38 +84,83 @@ export function ShareModal({ open, onClose, kind, amount, since, code }: { open:
 
 const CONFETTI_COLORS = { savings: ["#8be114", "#d2ff1e", "#def0d8", "#15803d"], referral: ["#006ac6", "#00a7ea", "#d2ff1e", "#ffffff"] };
 
+/** Small seeded PRNG (mulberry32) so a burst is random but stable across re-renders. */
+function rng(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SHAPES = ["", "confetti-piece--round", "confetti-piece--strip"];
+
+/**
+ * One burst of confetti from the centre of the screen, random in every respect (direction, reach,
+ * size, shape, spin, timing). The reach is measured in vw horizontally and vh vertically, so the burst
+ * fills a phone screen as well as a desktop one instead of staying hidden behind the card.
+ */
+function confettiPieces(kind: ShareKind, seed: number, count = 130) {
+  const colors = CONFETTI_COLORS[kind];
+  const r = rng(seed);
+  return Array.from({ length: count }, () => {
+    const angle = r() * Math.PI * 2;
+    const reach = 12 + r() * 48; // 12–60% of the viewport in that direction
+    return {
+      shape: SHAPES[Math.floor(r() * SHAPES.length)],
+      style: {
+        "--dx": `${(Math.cos(angle) * reach).toFixed(1)}vw`,
+        "--dy": `${(Math.sin(angle) * reach).toFixed(1)}vh`,
+        "--drop": `${(8 + r() * 28).toFixed(0)}vh`,
+        "--spin": `${(r() < 0.5 ? -1 : 1) * Math.round(360 + r() * 720)}deg`,
+        "--size": (0.7 + r() * 0.7).toFixed(2),
+        animationDelay: `${Math.round(r() * 140)}ms`,
+        animationDuration: `${(1.4 + r() * 0.9).toFixed(2)}s`,
+        background: colors[Math.floor(r() * colors.length)],
+      } as CSSProperties,
+    };
+  });
+}
+
 export function CelebrationOverlay({ open, onClose, kind, amount, since, onShare }: { open: boolean; onClose: () => void; kind: ShareKind; amount: number; since: string | null; onShare: () => void }) {
-  if (!open) return null;
-  const pieces = Array.from({ length: 60 }, (_, i) => ({
-    left: `${(i * 37) % 100}%`,
-    delay: `${(i % 12) * 0.35}s`,
-    duration: `${4 + (i % 5)}s`,
-    color: CONFETTI_COLORS[kind][i % 4],
-  }));
+  const { mounted, exiting } = usePresence(open, 180);
+  // A fresh random burst each time the overlay opens; the seed is fixed while it is up so re-renders don't reshuffle it.
+  const seed = useRef(0);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current) seed.current = Math.floor(Math.random() * 2 ** 32);
+  wasOpen.current = open;
+  const pieces = useMemo(() => confettiPieces(kind, seed.current), [kind, seed.current]);
+  if (!mounted) return null;
   const isSavings = kind === "savings";
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-neutral-900/70 p-4" onClick={onClose}>
-      {pieces.map((p, i) => (
-        <span key={i} className="confetti-piece" style={{ left: p.left, animationDelay: p.delay, animationDuration: p.duration, background: p.color }} />
-      ))}
-      <div className={`relative w-full max-w-md rounded-2xl p-8 text-center shadow-lg ${isSavings ? "bg-brand-chartreuse text-brand-dark" : "bg-brand-blue text-white"}`} onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-semibold">
-          {isSavings ? "You saved " : "You earned "}
-          <span className={isSavings ? "text-brand-blue" : "text-brand-chartreuse"}>{php(amount, { decimals: isSavings ? 2 : 0 })}</span>
-          {isSavings ? " with solar!" : " with your referrals"}
-        </h2>
-        <p className={`mt-3 text-sm ${isSavings ? "text-brand-dark/80" : "text-white/85"}`}>
-          {isSavings ? `Yay! You've saved a lot since switching to solar${since ? ` in ${since}` : ""}. Share this with your friends!` : "Yay! You helped someone make the switch to solar. Spread the word and keep earning."}
-        </p>
-        <div className="mt-6 flex flex-col gap-2">
-          <Button variant={isSavings ? "dark" : "accent"} size="lg" onClick={onShare}>
-            {isSavings ? "Share" : "Share referral code"}
-          </Button>
-          <button onClick={onClose} className={`py-2 text-sm font-semibold ${isSavings ? "text-brand-dark/80" : "text-white/85"} hover:underline`}>
-            Close
-          </button>
+    <Overlay>
+      <div className={cx("fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-neutral-900/70 p-4", exiting ? "anim-fade-out" : "anim-fade-in")} onClick={onClose}>
+        {/* After the card in the DOM so the pieces fly over it; they ignore pointer events. */}
+        <div className={cx("relative w-full max-w-md rounded-2xl p-8 text-center shadow-lg", isSavings ? "bg-brand-chartreuse text-brand-dark" : "bg-brand-blue text-white", exiting ? "anim-pop-out" : "anim-pop-in")} onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-2xl font-semibold">
+            {isSavings ? "You saved " : "You earned "}
+            <span className={isSavings ? "text-brand-blue" : "text-brand-chartreuse"}>{php(amount, { decimals: isSavings ? 2 : 0 })}</span>
+            {isSavings ? " with solar!" : " with your referrals"}
+          </h2>
+          <p className={`mt-3 text-sm ${isSavings ? "text-brand-dark/80" : "text-white/85"}`}>
+            {isSavings ? `Yay! You've saved a lot since switching to solar${since ? ` in ${since}` : ""}. Share this with your friends!` : "Yay! You helped someone make the switch to solar. Spread the word and keep earning."}
+          </p>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button variant={isSavings ? "dark" : "accent"} size="lg" onClick={onShare}>
+              {isSavings ? "Share" : "Share referral code"}
+            </Button>
+            <button onClick={onClose} className={`py-2 text-sm font-semibold ${isSavings ? "text-brand-dark/80" : "text-white/85"} hover:underline`}>
+              Close
+            </button>
+          </div>
         </div>
+        {pieces.map((p, i) => (
+          <span key={i} className={cx("confetti-piece", p.shape)} style={p.style} aria-hidden="true" />
+        ))}
       </div>
-    </div>
+    </Overlay>
   );
 }

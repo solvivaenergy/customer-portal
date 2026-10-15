@@ -1,5 +1,6 @@
-import { forwardRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
-import { Loader2, X } from "lucide-react";
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Loader2, X } from "lucide-react";
 
 export const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
 
@@ -31,7 +32,7 @@ export const Button = forwardRef<
       ref={ref}
       disabled={disabled || loading}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60",
         buttonVariants[variant],
         buttonSizes[size],
         full && "w-full",
@@ -62,12 +63,19 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   },
 );
 
-export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }>(
-  function Select({ className, invalid, children, ...rest }, ref) {
+/**
+ * Native select with a chevron drawn by an icon (a background-image data URI cannot be expressed as a
+ * Tailwind arbitrary value). `className` sizes the select itself; `wrapperClassName` sizes the box.
+ */
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean; wrapperClassName?: string }>(
+  function Select({ className, wrapperClassName, invalid, children, ...rest }, ref) {
     return (
-      <select ref={ref} className={cx(fieldBase, "appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22 fill=%22none%22 stroke=%22%23667085%22 stroke-width=%221.67%22><path d=%22M5 7.5l5 5 5-5%22/></svg>')] bg-[length:20px_20px] bg-[position:right_12px_center] bg-no-repeat pr-10", invalid && "border-red-700", className)} {...rest}>
-        {children}
-      </select>
+      <span className={cx("relative block", wrapperClassName)}>
+        <select ref={ref} className={cx(fieldBase, "appearance-none truncate pr-10", invalid && "border-red-700", className)} {...rest}>
+          {children}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-500" aria-hidden="true" />
+      </span>
     );
   },
 );
@@ -133,22 +141,33 @@ export function Tabs<T extends string>({
   onChange: (id: T) => void;
   className?: string;
 }) {
+  // The active underline is one element that slides between tabs (measured after layout, re-measured on resize).
+  const listRef = useRef<HTMLDivElement>(null);
+  const [bar, setBar] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      setBar(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure).catch(() => undefined);
+    return () => window.removeEventListener("resize", measure);
+  }, [value, tabs]);
   return (
-    <div className={cx("flex gap-4 overflow-x-auto border-b border-neutral-200", className)} role="tablist">
+    <div ref={listRef} className={cx("relative flex gap-4 overflow-x-auto border-b border-neutral-200", className)} role="tablist">
       {tabs.map((t) => (
         <button
           key={t.id}
           role="tab"
           aria-selected={value === t.id}
           onClick={() => onChange(t.id)}
-          className={cx(
-            "-mb-px whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-semibold transition-colors",
-            value === t.id ? "border-brand-olive text-brand-olive" : "border-transparent text-neutral-500 hover:text-neutral-700",
-          )}
+          className={cx("whitespace-nowrap px-1 pb-3 text-sm font-semibold transition-colors", value === t.id ? "text-brand-olive" : "text-neutral-500 hover:text-neutral-700")}
         >
           {t.label}
         </button>
       ))}
+      {bar && <span aria-hidden="true" className="absolute bottom-0 h-0.5 rounded-full bg-brand-olive transition-[left,width] duration-200 ease-out" style={{ left: bar.left, width: bar.width }} />}
     </div>
   );
 }
@@ -175,7 +194,7 @@ export function Segmented<T extends string>({
           type="button"
           onClick={() => onChange(o.id)}
           className={cx(
-            "rounded-md font-semibold transition-colors",
+            "rounded-md font-semibold transition-[color,background-color,box-shadow] duration-200",
             size === "sm" ? "px-3 py-1 text-sm" : "px-5 py-2 text-sm",
             value === o.id ? "bg-white text-neutral-800 shadow-xs" : "text-neutral-500 hover:text-neutral-700",
           )}
@@ -183,6 +202,46 @@ export function Segmented<T extends string>({
           {o.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ Motion */
+
+/**
+ * Keeps an element mounted for `exitMs` after `open` turns false so it can play an exit animation.
+ * Render while `mounted`; switch to the exit classes while `exiting`.
+ */
+export function usePresence(open: boolean, exitMs = 160) {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    if (!mounted) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(() => setMounted(false), reduced ? 0 : exitMs);
+    return () => clearTimeout(t);
+  }, [open, mounted, exitMs]);
+  return { mounted: open || mounted, exiting: !open && mounted };
+}
+
+/**
+ * Renders full-screen overlays at the end of <body>, outside any ancestor whose transform or
+ * animation would otherwise become the containing block of a position:fixed element and clip it.
+ */
+export function Overlay({ children }: { children: ReactNode }) {
+  return createPortal(children, document.body);
+}
+
+/** Animated expand/collapse with no height measuring: the grid row eases between 0fr and 1fr. */
+export function Collapse({ open, children, className }: { open: boolean; children: ReactNode; className?: string }) {
+  return (
+    <div className={cx("grid transition-[grid-template-rows] duration-200 ease-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+      <div className={cx("min-h-0 overflow-hidden transition-opacity duration-200", open ? "opacity-100" : "opacity-0", className)} inert={!open}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -202,25 +261,28 @@ export function Modal({
   children: ReactNode;
   width?: string;
 }) {
+  const { mounted, exiting } = usePresence(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-  if (!open) return null;
+  if (!mounted) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/50 p-4" onClick={onClose}>
-      <div className={cx("w-full rounded-xl bg-white p-6 shadow-lg", width)} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100" aria-label="Close">
-            <X className="h-5 w-5" />
-          </button>
+    <Overlay>
+      <div className={cx("fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/50 p-4", exiting ? "anim-fade-out" : "anim-fade-in")} onClick={onClose}>
+        <div className={cx("w-full rounded-xl bg-white p-6 shadow-lg", width, exiting ? "anim-pop-out" : "anim-pop-in")} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+            <button onClick={onClose} className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100" aria-label="Close">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-    </div>
+    </Overlay>
   );
 }
 
@@ -232,7 +294,7 @@ export function Spinner({ className }: { className?: string }) {
 
 export function EmptyState({ icon, title, description, action }: { icon?: ReactNode; title: string; description?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="anim-fade-in flex flex-col items-center justify-center px-6 py-12 text-center">
       {icon && <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-light text-brand-dark">{icon}</div>}
       <p className="text-base font-semibold text-neutral-900">{title}</p>
       {description && <p className="mt-1 max-w-sm text-sm text-neutral-500">{description}</p>}
@@ -242,7 +304,7 @@ export function EmptyState({ icon, title, description, action }: { icon?: ReactN
 }
 
 export function ErrorNotice({ message }: { message: string }) {
-  return <div className="rounded-lg border border-red-700/20 bg-red-50 px-4 py-3 text-sm text-red-700">{message}</div>;
+  return <div className="anim-fade-up rounded-lg border border-red-700/20 bg-red-50 px-4 py-3 text-sm text-red-700">{message}</div>;
 }
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {

@@ -10,7 +10,7 @@ export default function SubmissionSuccessPage() {
     <>
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "Support", to: "/support" }, { label: isPms ? "Request PMS" : "Submit a ticket" }]} />
       <Card className="mx-auto max-w-xl py-16 text-center">
-        <CheckCircle2 className="mx-auto h-16 w-16 text-brand-absinthe" />
+        <CheckCircle2 className="anim-pop-in mx-auto h-16 w-16 text-brand-absinthe [animation-delay:120ms]" />
         <h1 className="mt-6 text-2xl font-semibold text-neutral-900">{isPms ? "Request submitted" : "Support ticket created"}</h1>
         <p className="mx-auto mt-2 max-w-sm text-base text-neutral-500">
           {isPms ? "Your request has been created. Our team is looking into it and will reach out to you as soon as possible." : "Your support ticket has been created. Our team is looking into it and will reach out to you as soon as possible."}

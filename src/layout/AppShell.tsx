@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, Home, LifeBuoy, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { usePortal } from "@/lib/portal";
 import { useWeather } from "@/lib/weather";
-import { cx } from "@/components/ui";
+import { cx, usePresence } from "@/components/ui";
 import { initials } from "@/lib/format";
 import { Logo } from "@/components/Logo";
 
@@ -37,7 +37,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-brand-dark px-4 py-6 text-white" onClick={onNavigate}>
       <div className="px-2">
-        <Logo />
+        <Logo size="xl" />
       </div>
       <nav className="mt-10 flex flex-col gap-1">
         <NavItem to="/" end icon={<Home className="h-5 w-5" />} label="Home" />
@@ -90,6 +90,8 @@ function WeatherChip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const drawer = usePresence(open, 200);
+  const { pathname } = useLocation();
   return (
     <div className="min-h-screen lg:flex">
       {/* Desktop sidebar */}
@@ -101,15 +103,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile header + drawer */}
       <div className="flex items-center justify-between bg-brand-dark px-4 py-3 lg:hidden">
-        <Logo />
+        <Logo size="lg" />
         <button onClick={() => setOpen(true)} className="rounded-md p-2 text-white hover:bg-white/10" aria-label="Open menu">
           <Menu className="h-6 w-6" />
         </button>
       </div>
-      {open && (
+      {drawer.mounted && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-neutral-900/50" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-[296px] shadow-lg">
+          <div className={cx("absolute inset-0 bg-neutral-900/50", drawer.exiting ? "anim-fade-out" : "anim-fade-in")} onClick={() => setOpen(false)} />
+          <div className={cx("absolute inset-y-0 left-0 w-[296px] shadow-lg", drawer.exiting ? "anim-slide-out-left" : "anim-slide-in-left")}>
             <Sidebar onNavigate={() => setOpen(false)} />
             <button onClick={() => setOpen(false)} className="absolute right-3 top-5 rounded-md p-1 text-white/80 hover:bg-white/10" aria-label="Close menu">
               <X className="h-5 w-5" />
@@ -119,11 +121,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className="min-w-0 flex-1">
-        <div className="mx-auto max-w-[1120px] px-4 py-6 sm:px-8 sm:py-8">
+        <div className="max-w-[1120px] px-4 py-6 sm:px-8 sm:py-8">
           <div className="mb-6 flex items-center justify-end">
             <WeatherChip />
           </div>
-          {children}
+          {/* Keyed by path so every navigation (including account tabs) eases the new page in. */}
+          <div key={pathname} className="anim-fade-up">
+            {children}
+          </div>
         </div>
       </main>
     </div>
