@@ -80,118 +80,120 @@ export default function SupportHubPage() {
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "Support" }]} />
       <PageHeader title="Support and Helpdesk" subtitle="Submit a ticket, request a maintenance visit, or reach our team." />
 
-      <div className="grid gap-5 md:grid-cols-3">
-        <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" />
-        <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" />
-        <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." />
-      </div>
-
-      <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">My activities</h2>
-      <div className="mb-4 flex items-center justify-between">
-        <Segmented
-          options={[
-            { id: "support", label: "Support" },
-            { id: "pms", label: "PMS" },
-          ]}
-          value={kind}
-          onChange={(k) => {
-            setKind(k);
-            setPage(1);
-          }}
-        />
-        <Button variant="ghost" size="sm" onClick={() => (kind === "support" ? tickets.refresh() : pms.refresh())} disabled={active.loading}>
-          Refresh
-        </Button>
-      </div>
-
-      <Card padded={false} className="overflow-hidden">
-        {/* Keyed so switching Support/PMS, paging and loading → loaded ease in. */}
-        <div key={`${kind}-${page}-${active.rows ? "ready" : "loading"}`} className="anim-fade-in">
-          {active.error ? (
-            <div className="p-6">
-              <ErrorNotice message={`Could not load your ${kind === "pms" ? "PMS requests" : "tickets"}: ${active.error}`} />
-            </div>
-          ) : active.loading && !active.rows ? (
-            <div className="flex justify-center py-16">
-              <Spinner />
-            </div>
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={<Inbox className="h-6 w-6" />}
-              title={kind === "pms" ? "No PMS requests yet" : "No support tickets yet"}
-              description={kind === "pms" ? "Your preventive maintenance requests will be listed here." : "Tickets you submit will be listed here with their status."}
-              action={
-                <Link to={kind === "pms" ? "/support/pms" : "/support/tickets/new"}>
-                  <Button variant="secondary">{kind === "pms" ? "Request PMS" : "Submit a ticket"}</Button>
-                </Link>
-              }
-            />
-          ) : kind === "support" ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-neutral-100 text-neutral-700">
-                  <tr>
-                    <Th>Ticket No.</Th>
-                    <Th>Subject</Th>
-                    <Th>Description</Th>
-                    <Th>Created</Th>
-                    <Th>Status</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(visible as Ticket[]).map((t) => (
-                    <tr key={t.id} className="border-t border-neutral-200 hover:bg-neutral-50">
-                      <td className="px-6 py-4">
-                        <Link to={`/support/tickets/${t.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
-                          {t.ref}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 text-neutral-700">{truncate(t.subject, 40)}</td>
-                      <td className="px-6 py-4 text-neutral-600">{truncate(t.description, 48) || "—"}</td>
-                      <td className="px-6 py-4 text-neutral-700">{shortDate(t.createdAt)}</td>
-                      <td className="px-6 py-4">
-                        <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-neutral-100 text-neutral-700">
-                  <tr>
-                    <Th>Request No.</Th>
-                    <Th>Subject</Th>
-                    <Th>Scheduled visit</Th>
-                    <Th>Requested</Th>
-                    <Th>Status</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(visible as PmsRecord[]).map((r) => (
-                    <tr key={r.id} className="border-t border-neutral-200 hover:bg-neutral-50">
-                      <td className="px-6 py-4">
-                        <Link to={`/support/pms/requests/${r.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
-                          {r.ref}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 text-neutral-700">{truncate(r.name, 44)}</td>
-                      <td className="px-6 py-4 text-neutral-600">{r.scheduleDate ? dateTime(r.scheduleDate) : "To be confirmed"}</td>
-                      <td className="px-6 py-4 text-neutral-700">{r.requestDate ? longDate(r.requestDate) : shortDate(r.createdAt)}</td>
-                      <td className="px-6 py-4">
-                        <Badge tone={STATUS_TONE[r.status]}>{r.stage}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      <div className="anim-fade-up">
+        <div className="grid gap-5 md:grid-cols-3">
+          <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" />
+          <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" />
+          <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." />
         </div>
-      </Card>
-      <Pagination page={page} pages={pages} onChange={setPage} />
+
+        <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">My activities</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <Segmented
+            options={[
+              { id: "support", label: "Support" },
+              { id: "pms", label: "PMS" },
+            ]}
+            value={kind}
+            onChange={(k) => {
+              setKind(k);
+              setPage(1);
+            }}
+          />
+          <Button variant="ghost" size="sm" onClick={() => (kind === "support" ? tickets.refresh() : pms.refresh())} disabled={active.loading}>
+            Refresh
+          </Button>
+        </div>
+
+        <Card padded={false} className="overflow-hidden">
+          {/* Keyed so switching Support/PMS, paging and loading → loaded ease in. */}
+          <div key={`${kind}-${page}-${active.rows ? "ready" : "loading"}`} className="anim-fade-in">
+            {active.error ? (
+              <div className="p-6">
+                <ErrorNotice message={`Could not load your ${kind === "pms" ? "PMS requests" : "tickets"}: ${active.error}`} />
+              </div>
+            ) : active.loading && !active.rows ? (
+              <div className="flex justify-center py-16">
+                <Spinner />
+              </div>
+            ) : visible.length === 0 ? (
+              <EmptyState
+                icon={<Inbox className="h-6 w-6" />}
+                title={kind === "pms" ? "No PMS requests yet" : "No support tickets yet"}
+                description={kind === "pms" ? "Your preventive maintenance requests will be listed here." : "Tickets you submit will be listed here with their status."}
+                action={
+                  <Link to={kind === "pms" ? "/support/pms" : "/support/tickets/new"}>
+                    <Button variant="secondary">{kind === "pms" ? "Request PMS" : "Submit a ticket"}</Button>
+                  </Link>
+                }
+              />
+            ) : kind === "support" ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-neutral-100 text-neutral-700">
+                    <tr>
+                      <Th>Ticket No.</Th>
+                      <Th>Subject</Th>
+                      <Th>Description</Th>
+                      <Th>Created</Th>
+                      <Th>Status</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(visible as Ticket[]).map((t) => (
+                      <tr key={t.id} className="border-t border-neutral-200 hover:bg-neutral-50">
+                        <td className="px-6 py-4">
+                          <Link to={`/support/tickets/${t.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
+                            {t.ref}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 text-neutral-700">{truncate(t.subject, 40)}</td>
+                        <td className="px-6 py-4 text-neutral-600">{truncate(t.description, 48) || "—"}</td>
+                        <td className="px-6 py-4 text-neutral-700">{shortDate(t.createdAt)}</td>
+                        <td className="px-6 py-4">
+                          <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-neutral-100 text-neutral-700">
+                    <tr>
+                      <Th>Request No.</Th>
+                      <Th>Subject</Th>
+                      <Th>Scheduled visit</Th>
+                      <Th>Requested</Th>
+                      <Th>Status</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(visible as PmsRecord[]).map((r) => (
+                      <tr key={r.id} className="border-t border-neutral-200 hover:bg-neutral-50">
+                        <td className="px-6 py-4">
+                          <Link to={`/support/pms/requests/${r.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
+                            {r.ref}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 text-neutral-700">{truncate(r.name, 44)}</td>
+                        <td className="px-6 py-4 text-neutral-600">{r.scheduleDate ? dateTime(r.scheduleDate) : "To be confirmed"}</td>
+                        <td className="px-6 py-4 text-neutral-700">{r.requestDate ? longDate(r.requestDate) : shortDate(r.createdAt)}</td>
+                        <td className="px-6 py-4">
+                          <Badge tone={STATUS_TONE[r.status]}>{r.stage}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </Card>
+        <Pagination page={page} pages={pages} onChange={setPage} />
+      </div>
     </>
   );
 }

@@ -45,49 +45,51 @@ export default function NewTicketPage() {
     <>
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "Support", to: "/support" }, { label: "Submit a ticket" }]} />
       <PageHeader title="Submit a ticket" subtitle="Got a question or need support? Submit a ticket to our support team and we'll review your request right away to ensure you get the help you need." />
-      <Card className="max-w-3xl">
-        <form onSubmit={submit} className="flex flex-col gap-5">
-          {error && <ErrorNotice message={error} />}
-          <Field label="Full name of system owner" required error={errors.fullName}>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} invalid={!!errors.fullName} />
-          </Field>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Contact number">
-              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09XX XXX XXXX" />
+      <div className="anim-fade-up">
+        <Card className="max-w-3xl">
+          <form onSubmit={submit} className="flex flex-col gap-5">
+            {error && <ErrorNotice message={error} />}
+            <Field label="Full name of system owner" required error={errors.fullName}>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} invalid={!!errors.fullName} />
             </Field>
-            <Field label="Email" hint="Tickets are linked to the email you sign in with.">
-              <Input value={profile?.email ?? ""} disabled />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Contact number">
+                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09XX XXX XXXX" />
+              </Field>
+              <Field label="Email" hint="Tickets are linked to the email you sign in with.">
+                <Input value={profile?.email ?? ""} disabled />
+              </Field>
+            </div>
+            <Field label="Concern type" required error={errors.category}>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)} invalid={!!errors.category}>
+                <option value="">Please specify</option>
+                {groups.map((g) => (
+                  <optgroup key={g} label={g}>
+                    {TICKET_CATEGORIES.filter((c) => c.group === g).map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.value}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
             </Field>
-          </div>
-          <Field label="Concern type" required error={errors.category}>
-            <Select value={category} onChange={(e) => setCategory(e.target.value)} invalid={!!errors.category}>
-              <option value="">Please specify</option>
-              {groups.map((g) => (
-                <optgroup key={g} label={g}>
-                  {TICKET_CATEGORIES.filter((c) => c.group === g).map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.value}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Details about your concern" required error={errors.details}>
-            <Textarea value={details} onChange={(e) => setDetails(e.target.value)} invalid={!!errors.details} placeholder="Tell us what happened, when it started, and anything you've already tried." />
-          </Field>
-          <div className="flex justify-end gap-3 pt-2">
-            <Link to="/support">
-              <Button type="button" variant="ghost">
-                Cancel
+            <Field label="Details about your concern" required error={errors.details}>
+              <Textarea value={details} onChange={(e) => setDetails(e.target.value)} invalid={!!errors.details} placeholder="Tell us what happened, when it started, and anything you've already tried." />
+            </Field>
+            <div className="flex justify-end gap-3 pt-2">
+              <Link to="/support">
+                <Button type="button" variant="ghost">
+                  Cancel
+                </Button>
+              </Link>
+              <Button type="submit" loading={busy}>
+                Submit
               </Button>
-            </Link>
-            <Button type="submit" loading={busy}>
-              Submit
-            </Button>
-          </div>
-        </form>
-      </Card>
+            </div>
+          </form>
+        </Card>
+      </div>
     </>
   );
 }

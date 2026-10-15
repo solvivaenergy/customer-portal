@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import { Bell, Home, LifeBuoy, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { usePortal } from "@/lib/portal";
@@ -91,7 +91,6 @@ function WeatherChip() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const drawer = usePresence(open, 200);
-  const { pathname } = useLocation();
   return (
     <div className="min-h-screen lg:flex">
       {/* Desktop sidebar */}
@@ -125,10 +124,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="mb-6 flex items-center justify-end">
             <WeatherChip />
           </div>
-          {/* Keyed by path so every navigation (including account tabs) eases the new page in. */}
-          <div key={pathname} className="anim-fade-up">
-            {children}
-          </div>
+          {/* Pages animate their own content below the breadcrumb and header, so those stay still. */}
+          {children}
         </div>
       </main>
     </div>

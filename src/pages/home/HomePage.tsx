@@ -187,224 +187,226 @@ export default function HomePage() {
   const xInterval = (p: Period) => (p.range === "1M" ? 4 : p.range === "1D" ? 2 : 0);
 
   return (
-    <div className="anim-fade-in">
+    <>
       <PageHeader title={`${greeting()}, ${firstName(profile?.full_name || profile?.odoo_customer_name)}`} subtitle="Track and manage your solar savings" />
 
-      <div className="mb-6 flex items-center gap-3">
-        <span className="shrink-0 text-base text-neutral-700">Site ID:</span>
-        {systems.length > 1 ? (
-          <Select value={system.id} onChange={(e) => selectSystem(e.target.value)} wrapperClassName="w-full max-w-md" className="py-2 text-sm" aria-label="Select site">
-            {systems.map((s) => (
-              <option key={s.id} value={s.id}>
-                {(s.system_name || s.solis_plant_name || "System").trim()} · {s.solis_station_id}
-              </option>
-            ))}
-          </Select>
-        ) : (
-          <span className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-xs">{system.solis_station_id ?? system.system_name ?? "—"}</span>
-        )}
-      </div>
-
-      {dataError && (
-        <div className="mb-6">
-          <ErrorNotice message={`Some data could not be loaded: ${dataError}`} />
-        </div>
-      )}
-
-      {/* ---------------------------------------------------------- Hero */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-base text-neutral-600">Total savings from Solar</p>
-              {savingsAgg ? (
-                <p key={savingsBounds.title} className="anim-fade-in mt-1 text-4xl font-semibold tracking-tight text-neutral-900">
-                  {php(savingsAgg.savings)}
-                </p>
-              ) : (
-                <div className="mt-2 h-9 w-48 animate-pulse rounded bg-neutral-100" />
-              )}
-              <p className="mt-1 text-sm text-neutral-500">{savingsBounds.subtitle}</p>
-            </div>
-            <PeriodNav period={savings.period} onChange={savings.setPeriod} />
-          </div>
-          <div className="mt-6">
-            {savingsAgg ? (
-              savingsAgg.days === 0 ? (
-                <EmptyState title="No data for this period" description="Your inverter did not report any production in this period." />
-              ) : (
-                <SavingsChart points={savingsAgg.points} interval={xInterval(savings.period)} divider={yearDivider(savingsAgg.points)} />
-              )
-            ) : (
-              <div className="flex h-64 items-center justify-center">
-                <Spinner />
-              </div>
-            )}
-          </div>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <Segmented options={RANGES} value={savings.period.range} onChange={savings.setRange} size="sm" />
-          </div>
-          {savingsAgg && savingsAgg.days > 0 && (
-            <p className="mt-3 text-center text-xs text-neutral-500">
-              {savingsAgg.tieredRate ? `Priced at the ${provider?.code ?? "MERALCO"} residential rate for your monthly consumption level` : `Priced at ${provider?.code ?? "MERALCO"} residential rates`}
-              {savingsAgg.estimatedRate ? "; some months use the nearest published rate." : "."}
-            </p>
+      <div className="anim-fade-up">
+        <div className="mb-6 flex items-center gap-3">
+          <span className="shrink-0 text-base text-neutral-700">Site ID:</span>
+          {systems.length > 1 ? (
+            <Select value={system.id} onChange={(e) => selectSystem(e.target.value)} wrapperClassName="w-full max-w-md" className="py-2 text-sm" aria-label="Select site">
+              {systems.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {(s.system_name || s.solis_plant_name || "System").trim()} · {s.solis_station_id}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <span className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-xs">{system.solis_station_id ?? system.system_name ?? "—"}</span>
           )}
-        </Card>
+        </div>
 
-        <div className="flex flex-col gap-4">
-          <button onClick={() => setCelebrate("savings")} className="text-left" disabled={!life}>
-            <Card className="transition-shadow duration-200 hover:shadow-sm">
-              <div className="flex items-start justify-between">
-                <p className="text-base text-neutral-600">Total savings from solar</p>
-                <CoinsIcon className="h-8 w-8" />
+        {dataError && (
+          <div className="mb-6">
+            <ErrorNotice message={`Some data could not be loaded: ${dataError}`} />
+          </div>
+        )}
+
+        {/* ---------------------------------------------------------- Hero */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
+          <Card>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base text-neutral-600">Total savings from Solar</p>
+                {savingsAgg ? (
+                  <p key={savingsBounds.title} className="anim-fade-in mt-1 text-4xl font-semibold tracking-tight text-neutral-900">
+                    {php(savingsAgg.savings)}
+                  </p>
+                ) : (
+                  <div className="mt-2 h-9 w-48 animate-pulse rounded bg-neutral-100" />
+                )}
+                <p className="mt-1 text-sm text-neutral-500">{savingsBounds.subtitle}</p>
               </div>
-              <p className="mt-2 text-2xl font-semibold text-neutral-900">{life ? php(life.savings) : "—"}</p>
-              {sinceLabel && <p className="mt-1 text-xs text-neutral-500">Since {sinceLabel} · {kwh(life?.production ?? 0)} produced</p>}
-            </Card>
-          </button>
-          <button onClick={() => setCelebrate("referral")} className="text-left">
-            <Card className="transition-shadow duration-200 hover:shadow-sm">
-              <div className="flex items-start justify-between">
-                <p className="text-base text-neutral-600">Referral earnings</p>
-                <HandshakeIcon className="h-8 w-8" />
-              </div>
-              <p className="mt-2 text-2xl font-semibold text-neutral-900">{php(referralEarnings, { decimals: 0 })}</p>
-              <Badge tone="neutral" className="mt-2">
-                Tracking coming soon
-              </Badge>
-            </Card>
-          </button>
-          <div className="rounded-xl bg-brand-chartreuse p-6">
-            <p className="text-lg font-semibold text-brand-blue">Refer and Earn</p>
-            <p className="mt-1 text-sm text-brand-dark">{REFERRAL.blurb}</p>
-            <Button variant="dark" full className="mt-4" onClick={() => setShare("referral")}>
-              <Share2 className="h-4 w-4" /> Share code
-            </Button>
-            {profile?.referral_code && <p className="mt-2 text-center text-xs text-brand-dark/80">Your code: {profile.referral_code}</p>}
+              <PeriodNav period={savings.period} onChange={savings.setPeriod} />
+            </div>
+            <div className="mt-6">
+              {savingsAgg ? (
+                savingsAgg.days === 0 ? (
+                  <EmptyState title="No data for this period" description="Your inverter did not report any production in this period." />
+                ) : (
+                  <SavingsChart points={savingsAgg.points} interval={xInterval(savings.period)} divider={yearDivider(savingsAgg.points)} />
+                )
+              ) : (
+                <div className="flex h-64 items-center justify-center">
+                  <Spinner />
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+              <Segmented options={RANGES} value={savings.period.range} onChange={savings.setRange} size="sm" />
+            </div>
+            {savingsAgg && savingsAgg.days > 0 && (
+              <p className="mt-3 text-center text-xs text-neutral-500">
+                {savingsAgg.tieredRate ? `Priced at the ${provider?.code ?? "MERALCO"} residential rate for your monthly consumption level` : `Priced at ${provider?.code ?? "MERALCO"} residential rates`}
+                {savingsAgg.estimatedRate ? "; some months use the nearest published rate." : "."}
+              </p>
+            )}
+          </Card>
+
+          <div className="flex flex-col gap-4">
+            <button onClick={() => setCelebrate("savings")} className="text-left" disabled={!life}>
+              <Card className="transition-shadow duration-200 hover:shadow-sm">
+                <div className="flex items-start justify-between">
+                  <p className="text-base text-neutral-600">Total savings from solar</p>
+                  <CoinsIcon className="h-8 w-8" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-neutral-900">{life ? php(life.savings) : "—"}</p>
+                {sinceLabel && <p className="mt-1 text-xs text-neutral-500">Since {sinceLabel} · {kwh(life?.production ?? 0)} produced</p>}
+              </Card>
+            </button>
+            <button onClick={() => setCelebrate("referral")} className="text-left">
+              <Card className="transition-shadow duration-200 hover:shadow-sm">
+                <div className="flex items-start justify-between">
+                  <p className="text-base text-neutral-600">Referral earnings</p>
+                  <HandshakeIcon className="h-8 w-8" />
+                </div>
+                <p className="mt-2 text-2xl font-semibold text-neutral-900">{php(referralEarnings, { decimals: 0 })}</p>
+                <Badge tone="neutral" className="mt-2">
+                  Tracking coming soon
+                </Badge>
+              </Card>
+            </button>
+            <div className="rounded-xl bg-brand-chartreuse p-6">
+              <p className="text-lg font-semibold text-brand-blue">Refer and Earn</p>
+              <p className="mt-1 text-sm text-brand-dark">{REFERRAL.blurb}</p>
+              <Button variant="dark" full className="mt-4" onClick={() => setShare("referral")}>
+                <Share2 className="h-4 w-4" /> Share code
+              </Button>
+              {profile?.referral_code && <p className="mt-2 text-center text-xs text-brand-dark/80">Your code: {profile.referral_code}</p>}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* --------------------------------------------------- Performance */}
-      <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">Your system's performance</h2>
-      <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
-        <Card>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-base font-semibold text-neutral-700">{perfHasConsumption ? "Total consumption" : "Total production"}</p>
-              {perfAgg ? (
-                <p key={perfBounds.title} className="anim-fade-in mt-1 text-3xl font-semibold tracking-tight text-neutral-900">
-                  {kwh(perfHasConsumption ? (perfAgg.consumption ?? 0) : perfAgg.production)}
-                </p>
-              ) : (
-                <div className="mt-2 h-8 w-40 animate-pulse rounded bg-neutral-100" />
-              )}
-              <p className="mt-1 text-sm text-neutral-500">{perfBounds.subtitle}</p>
-            </div>
-            <PeriodNav period={perf.period} onChange={perf.setPeriod} />
-          </div>
-          <div className="mt-6">
-            {perfAgg ? (
-              perfAgg.days === 0 ? (
-                <EmptyState title="No data for this period" description="Your inverter did not report any data in this period." />
-              ) : (
-                <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} />
-              )
-            ) : (
-              <div className="flex h-64 items-center justify-center">
-                <Spinner />
-              </div>
-            )}
-          </div>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-sm text-neutral-600">
-            {perfHasConsumption ? (
-              LEGEND.map((l) => (
-                <span key={l.key} className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 rounded-sm" style={{ background: l.color }} /> {l.label}
-                </span>
-              ))
-            ) : (
-              <span className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm bg-brand-absinthe" /> Solar production
-              </span>
-            )}
-          </div>
-          <div className="mt-4 flex justify-center">
-            <Segmented options={RANGES} value={perf.period.range} onChange={perf.setRange} size="sm" />
-          </div>
-        </Card>
-
-        <div className="flex flex-col gap-4">
+        {/* --------------------------------------------------- Performance */}
+        <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">Your system's performance</h2>
+        <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
           <Card>
-            {perfAgg && perfHasConsumption ? (
-              <>
-                <p className="text-base text-neutral-600">Total consumption</p>
-                <p className="mt-2 text-2xl font-semibold text-neutral-900">{kwh(perfAgg.consumption ?? 0)}</p>
-                <p className="text-sm text-neutral-500">{perfBounds.subtitle.replace(/^Since /, "since ")}</p>
-                {split && (
-                  <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-neutral-100">
-                    <span style={{ width: `${split.grid * 100}%`, background: LEGEND[0].color }} />
-                    <span style={{ width: `${split.solar * 100}%`, background: LEGEND[1].color }} />
-                    <span style={{ width: `${split.battery * 100}%`, background: LEGEND[2].color }} />
-                  </div>
-                )}
-                <ul className="mt-4 flex flex-col gap-2 text-sm">
-                  {[
-                    { l: LEGEND[0], v: perfAgg.grid },
-                    { l: LEGEND[1], v: perfAgg.solar },
-                    { l: LEGEND[2], v: perfAgg.battery },
-                  ].map(({ l, v }) => (
-                    <li key={l.key} className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-neutral-700">
-                        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: l.color }} /> {l.label}
-                      </span>
-                      <span className="text-neutral-600">{num(v, 1)} kWh</span>
-                    </li>
-                  ))}
-                </ul>
-                {selfShare != null && (
-                  <p className="mt-4 rounded-lg bg-green-50 px-3 py-2.5 text-sm text-green-700">
-                    {selfShare}% of your consumption {perf.period.range === "1D" ? "today came" : "came"} from your solar{perfAgg.battery > 0 ? " and battery" : ""}.
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-neutral-700">{perfHasConsumption ? "Total consumption" : "Total production"}</p>
+                {perfAgg ? (
+                  <p key={perfBounds.title} className="anim-fade-in mt-1 text-3xl font-semibold tracking-tight text-neutral-900">
+                    {kwh(perfHasConsumption ? (perfAgg.consumption ?? 0) : perfAgg.production)}
                   </p>
+                ) : (
+                  <div className="mt-2 h-8 w-40 animate-pulse rounded bg-neutral-100" />
                 )}
-              </>
-            ) : perfAgg ? (
-              <>
-                <p className="text-base text-neutral-600">Total production</p>
-                <p className="mt-2 text-2xl font-semibold text-neutral-900">{kwh(perfAgg.production)}</p>
-                <p className="text-sm text-neutral-500">{perfBounds.subtitle}</p>
-                <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2.5 text-sm text-neutral-600">Consumption data isn't available for this system, so the breakdown by source can't be shown.</p>
-              </>
-            ) : (
-              <div className="h-40 animate-pulse rounded bg-neutral-100" />
-            )}
+                <p className="mt-1 text-sm text-neutral-500">{perfBounds.subtitle}</p>
+              </div>
+              <PeriodNav period={perf.period} onChange={perf.setPeriod} />
+            </div>
+            <div className="mt-6">
+              {perfAgg ? (
+                perfAgg.days === 0 ? (
+                  <EmptyState title="No data for this period" description="Your inverter did not report any data in this period." />
+                ) : (
+                  <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} />
+                )
+              ) : (
+                <div className="flex h-64 items-center justify-center">
+                  <Spinner />
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-sm text-neutral-600">
+              {perfHasConsumption ? (
+                LEGEND.map((l) => (
+                  <span key={l.key} className="flex items-center gap-2">
+                    <span className="inline-block h-3 w-3 rounded-sm" style={{ background: l.color }} /> {l.label}
+                  </span>
+                ))
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span className="inline-block h-3 w-3 rounded-sm bg-brand-absinthe" /> Solar production
+                </span>
+              )}
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Segmented options={RANGES} value={perf.period.range} onChange={perf.setRange} size="sm" />
+            </div>
           </Card>
 
-          <Card>
-            {hasBattery ? (
-              <>
-                <p className="flex items-center gap-2 text-base font-semibold text-neutral-800">
-                  <span className={cx("inline-block h-2.5 w-2.5 rounded-full", batteryStatus === "charging" ? "bg-green-700" : batteryStatus === "discharging" ? "bg-amber-700" : "bg-neutral-400")} />
-                  Battery {batteryStatus ?? "status unknown"}
-                </p>
-                <p className="mt-0.5 text-xs text-neutral-500">as of {latest5?.timestamp ? dateTime(latest5.timestamp) : shortDate(new Date())}</p>
-                <div className="relative mt-4 h-10 overflow-hidden rounded-lg bg-neutral-200">
-                  <div className="h-full bg-brand-chartreuse transition-[width] duration-500 ease-out" style={{ width: `${Math.max(0, Math.min(100, batteryLevel ?? 0))}%` }} />
-                  <span className="absolute inset-y-0 left-3 flex items-center text-lg font-semibold text-brand-dark">{batteryLevel != null ? `${Math.round(batteryLevel)}%` : "—"}</span>
+          <div className="flex flex-col gap-4">
+            <Card>
+              {perfAgg && perfHasConsumption ? (
+                <>
+                  <p className="text-base text-neutral-600">Total consumption</p>
+                  <p className="mt-2 text-2xl font-semibold text-neutral-900">{kwh(perfAgg.consumption ?? 0)}</p>
+                  <p className="text-sm text-neutral-500">{perfBounds.subtitle.replace(/^Since /, "since ")}</p>
+                  {split && (
+                    <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-neutral-100">
+                      <span style={{ width: `${split.grid * 100}%`, background: LEGEND[0].color }} />
+                      <span style={{ width: `${split.solar * 100}%`, background: LEGEND[1].color }} />
+                      <span style={{ width: `${split.battery * 100}%`, background: LEGEND[2].color }} />
+                    </div>
+                  )}
+                  <ul className="mt-4 flex flex-col gap-2 text-sm">
+                    {[
+                      { l: LEGEND[0], v: perfAgg.grid },
+                      { l: LEGEND[1], v: perfAgg.solar },
+                      { l: LEGEND[2], v: perfAgg.battery },
+                    ].map(({ l, v }) => (
+                      <li key={l.key} className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-neutral-700">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: l.color }} /> {l.label}
+                        </span>
+                        <span className="text-neutral-600">{num(v, 1)} kWh</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {selfShare != null && (
+                    <p className="mt-4 rounded-lg bg-green-50 px-3 py-2.5 text-sm text-green-700">
+                      {selfShare}% of your consumption {perf.period.range === "1D" ? "today came" : "came"} from your solar{perfAgg.battery > 0 ? " and battery" : ""}.
+                    </p>
+                  )}
+                </>
+              ) : perfAgg ? (
+                <>
+                  <p className="text-base text-neutral-600">Total production</p>
+                  <p className="mt-2 text-2xl font-semibold text-neutral-900">{kwh(perfAgg.production)}</p>
+                  <p className="text-sm text-neutral-500">{perfBounds.subtitle}</p>
+                  <p className="mt-4 rounded-lg bg-neutral-50 px-3 py-2.5 text-sm text-neutral-600">Consumption data isn't available for this system, so the breakdown by source can't be shown.</p>
+                </>
+              ) : (
+                <div className="h-40 animate-pulse rounded bg-neutral-100" />
+              )}
+            </Card>
+
+            <Card>
+              {hasBattery ? (
+                <>
+                  <p className="flex items-center gap-2 text-base font-semibold text-neutral-800">
+                    <span className={cx("inline-block h-2.5 w-2.5 rounded-full", batteryStatus === "charging" ? "bg-green-700" : batteryStatus === "discharging" ? "bg-amber-700" : "bg-neutral-400")} />
+                    Battery {batteryStatus ?? "status unknown"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-neutral-500">as of {latest5?.timestamp ? dateTime(latest5.timestamp) : shortDate(new Date())}</p>
+                  <div className="relative mt-4 h-10 overflow-hidden rounded-lg bg-neutral-200">
+                    <div className="h-full bg-brand-chartreuse transition-[width] duration-500 ease-out" style={{ width: `${Math.max(0, Math.min(100, batteryLevel ?? 0))}%` }} />
+                    <span className="absolute inset-y-0 left-3 flex items-center text-lg font-semibold text-brand-dark">{batteryLevel != null ? `${Math.round(batteryLevel)}%` : "—"}</span>
+                  </div>
+                  <p className="mt-3 text-sm text-neutral-600">{batteryKwh ? `${num(batteryKwh)} kWh battery` : "Battery storage"}</p>
+                </>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <BatteryCharging className="mt-0.5 h-5 w-5 text-neutral-400" />
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-700">No battery storage</p>
+                    <p className="mt-0.5 text-sm text-neutral-500">This system has no battery linked. Interested in storage? Contact our team.</p>
+                  </div>
                 </div>
-                <p className="mt-3 text-sm text-neutral-600">{batteryKwh ? `${num(batteryKwh)} kWh battery` : "Battery storage"}</p>
-              </>
-            ) : (
-              <div className="flex items-start gap-3">
-                <BatteryCharging className="mt-0.5 h-5 w-5 text-neutral-400" />
-                <div>
-                  <p className="text-sm font-semibold text-neutral-700">No battery storage</p>
-                  <p className="mt-0.5 text-sm text-neutral-500">This system has no battery linked. Interested in storage? Contact our team.</p>
-                </div>
-              </div>
-            )}
-          </Card>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
 
@@ -420,6 +422,6 @@ export default function HomePage() {
         }}
       />
       <ShareModal open={share !== null} onClose={() => setShare(null)} kind={lastKind.current.share} amount={lastKind.current.share === "referral" ? referralEarnings : (life?.savings ?? 0)} since={sinceLabel} code={profile?.referral_code ?? null} />
-    </div>
+    </>
   );
 }

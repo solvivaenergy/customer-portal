@@ -265,12 +265,15 @@ function SystemTab() {
           </Select>
         </Row>
       )}
-      {items.map(([k, v]) => (
-        <Row key={k} label={k}>
-          <div className="text-sm text-neutral-800">{v}</div>
-        </Row>
-      ))}
-      <p className="pt-5 text-sm text-neutral-500">Need to update any of these details? Submit a support ticket and our team will take care of it.</p>
+      {/* Keyed by system so switching stations eases the new details in. */}
+      <div key={system.id} className="anim-fade-up">
+        {items.map(([k, v]) => (
+          <Row key={k} label={k}>
+            <div className="text-sm text-neutral-800">{v}</div>
+          </Row>
+        ))}
+        <p className="pt-5 text-sm text-neutral-500">Need to update any of these details? Submit a support ticket and our team will take care of it.</p>
+      </div>
     </Section>
   );
 }
@@ -401,12 +404,14 @@ export default function AccountPage() {
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "My account" }]} />
       <PageHeader title="My account" subtitle="Update your information or access your documents" />
       <Tabs tabs={TABS} value={current} onChange={(id) => navigate(`/account/${id}`)} />
-      {current === "profile" && <ProfileTab />}
-      {current === "system" && <SystemTab />}
-      {current === "documents" && <DocumentsTab />}
-      {current === "faqs" && <FaqsTab />}
-      {current === "terms" && <LegalTab doc={TERMS} icon={<ScrollText className="h-6 w-6" />} />}
-      {current === "privacy" && <LegalTab doc={PRIVACY} icon={<ShieldCheck className="h-6 w-6" />} />}
+      <div key={current} className="anim-fade-up">
+        {current === "profile" && <ProfileTab />}
+        {current === "system" && <SystemTab />}
+        {current === "documents" && <DocumentsTab />}
+        {current === "faqs" && <FaqsTab />}
+        {current === "terms" && <LegalTab doc={TERMS} icon={<ScrollText className="h-6 w-6" />} />}
+        {current === "privacy" && <LegalTab doc={PRIVACY} icon={<ShieldCheck className="h-6 w-6" />} />}
+      </div>
     </>
   );
 }
