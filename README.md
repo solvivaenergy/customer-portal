@@ -31,7 +31,7 @@ src/
   auth/AuthProvider.tsx      Supabase Auth session, sign-in/out, reset and change password
   lib/portal.tsx             profile + systems + providers + rates (PortalProvider / usePortal)
   lib/energy.ts              readings fetch + period aggregation (1D/1W/1M/1Y/YTD)
-  lib/savings.ts             ₱ savings = kWh × provider rate for that month (flat, no tiers)
+  lib/savings.ts             ₱ savings = kWh × the DU's residential rate for that month (MERALCO: the level of the month's consumption)
   lib/api.ts                 monitoring API (/app/live, /app/hourly) with the user's JWT
   lib/tickets.ts             n8n ticket list / ticket + PMS intake
   lib/weather.ts             Open-Meteo chip (city guessed from the site address)
@@ -39,8 +39,8 @@ src/
   pages/auth/                login, forgot password, reset password (improvised; not in the mockup)
   pages/home/                dashboard: hero savings, performance, battery, share/celebration
   pages/support/             hub + My activities, new ticket, ticket detail, contact, PMS intro + wizard
-  pages/account/             profile, system details, documents, FAQs, terms, privacy
-  content/                   contact details, FAQs, legal text (copy owners: CX / Marketing / Legal)
+  pages/account/             profile, system details, FAQs, terms, privacy (documents tab hidden for now)
+  content/                   contact details, FAQs (generated from the website: node scripts/sync-faqs.mjs), legal links
 ```
 
 Design tokens live in `src/index.css` (`@theme`), taken from the Figma variables.

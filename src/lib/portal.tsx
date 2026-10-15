@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { supabase } from "./supabase";
 import { useAuth } from "@/auth/AuthProvider";
 import { fetchSystemDetails, type SystemDetails } from "./system";
-import type { Profile, Provider, Rate, SolarSystem } from "./types";
+import type { Profile, Provider, Rate, RateTier, SolarSystem } from "./types";
 
 type PortalState = {
   profile: Profile | null;
@@ -52,18 +52,28 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [p, s, pr, rt] = await Promise.all([
+      const [p, s, pr, rt, tr] = await Promise.all([
         supabase.from("user_profiles").select("id,full_name,phone,address,referral_code,solis_station_id,electricity_provider_id,odoo_customer_name,odoo_partner_id").eq("id", user.id).maybeSingle(),
         supabase.from("solar_systems").select("id,user_id,system_name,capacity_kwp,installation_date,battery_capacity_kwh,address,status,solis_station_id,solis_plant_name,is_primary,electricity_provider_id,odoo_lead_id").order("is_primary", { ascending: false }).order("created_at"),
         supabase.from("electricity_providers").select("id,name,code").order("id"),
-        supabase.from("electricity_rates").select("id,provider_id,rate,effective_date").order("effective_date"),
+        // Homes are billed on the residential schedule; commercial rows (none yet) would otherwise collide on the same date.
+        supabase.from("electricity_rates").select("id,provider_id,rate,effective_date,customer_class").eq("customer_class", "residential").order("effective_date"),
+        // Consumption levels of tiered schedules (MERALCO residential; monitoring migration 28 opened the read).
+        supabase.from("electricity_rate_tiers").select("rate_id,consumption_kwh,rate_per_kwh").order("consumption_kwh"),
       ]);
       for (const r of [p, s, pr, rt]) if (r.error) throw new Error(r.error.message);
+      if (tr.error) console.warn("rate tiers unavailable, using flat rates:", tr.error.message);
       setProfile(p.data ? { ...(p.data as Omit<Profile, "email">), email: user.email ?? "" } : { id: user.id, email: user.email ?? "", full_name: null, phone: null, address: null, referral_code: null, solis_station_id: null, electricity_provider_id: null, odoo_customer_name: null, odoo_partner_id: null });
       const sys = ((s.data ?? []) as SolarSystem[]).filter((x) => x.status !== "decommissioned");
       setSystems(sys);
       setProviders((pr.data ?? []) as Provider[]);
-      setRates(((rt.data ?? []) as Rate[]).map((r) => ({ ...r, rate: Number(r.rate) })));
+      const tiersByRate = new Map<number, RateTier[]>();
+      for (const t of (tr.data ?? []) as { rate_id: number; consumption_kwh: number | string; rate_per_kwh: number | string }[]) {
+        const list = tiersByRate.get(t.rate_id) ?? [];
+        list.push({ consumption_kwh: Number(t.consumption_kwh), rate_per_kwh: Number(t.rate_per_kwh) });
+        tiersByRate.set(t.rate_id, list);
+      }
+      setRates(((rt.data ?? []) as Omit<Rate, "tiers">[]).map((r) => ({ ...r, rate: Number(r.rate), tiers: (tiersByRate.get(r.id) ?? []).sort((a, b) => a.consumption_kwh - b.consumption_kwh) })));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

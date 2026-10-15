@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BatteryCharging, ChevronLeft, ChevronRight, Share2, Zap } from "lucide-react";
 import { CoinsIcon, HandshakeIcon } from "@/components/icons";
 import { usePortal } from "@/lib/portal";
 import { api } from "@/lib/api";
 import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, shiftPeriod, todayKey, yearDivider, type Aggregate, type Period, type RangeId } from "@/lib/energy";
+import { tierBasis } from "@/lib/savings";
 import { dateFromKey, kwh, manilaDateKey, num, php, firstName, greeting, shortDate, dateTime } from "@/lib/format";
 import type { DailyReading, FiveMinuteRow, HourBucket, LiveData } from "@/lib/types";
 import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Select, Spinner, cx } from "@/components/ui";
@@ -85,6 +86,10 @@ export default function HomePage() {
   const [dataError, setDataError] = useState<string | null>(null);
   const [share, setShare] = useState<ShareKind | null>(null);
   const [celebrate, setCelebrate] = useState<ShareKind | null>(null);
+  // The overlays play an exit animation after they are closed; keep the last kind so they do not restyle mid-fade.
+  const lastKind = useRef<{ share: ShareKind; celebrate: ShareKind }>({ share: "savings", celebrate: "savings" });
+  if (share) lastKind.current.share = share;
+  if (celebrate) lastKind.current.celebrate = celebrate;
 
   // Base data per system
   useEffect(() => {
@@ -133,16 +138,18 @@ export default function HomePage() {
 
   const rows = useMemo(() => (daily ? patchToday(daily, live) : null), [daily, live]);
   const life = useMemo(() => (rows ? lifetime(rows, rates, providerId) : null), [rows, rates, providerId]);
+  // Which consumption level each month is priced at (MERALCO residential tiers); undefined until the history is in.
+  const basis = useMemo(() => (rows ? tierBasis(rows) : undefined), [rows]);
 
   const savingsAgg: Aggregate | null = useMemo(() => {
-    if (savings.period.range === "1D") return savingsHours?.key === savings.period.anchor ? aggregateHours(savingsHours.hours, savings.period.anchor, rates, providerId) : null;
+    if (savings.period.range === "1D") return savingsHours?.key === savings.period.anchor ? aggregateHours(savingsHours.hours, savings.period.anchor, rates, providerId, basis) : null;
     return rows ? aggregateDaily(rows, savings.period, rates, providerId) : null;
-  }, [savings.period, savingsHours, rows, rates, providerId]);
+  }, [savings.period, savingsHours, rows, rates, providerId, basis]);
 
   const perfAgg: Aggregate | null = useMemo(() => {
-    if (perf.period.range === "1D") return perfHours?.key === perf.period.anchor ? aggregateHours(perfHours.hours, perf.period.anchor, rates, providerId) : null;
+    if (perf.period.range === "1D") return perfHours?.key === perf.period.anchor ? aggregateHours(perfHours.hours, perf.period.anchor, rates, providerId, basis) : null;
     return rows ? aggregateDaily(rows, perf.period, rates, providerId) : null;
-  }, [perf.period, perfHours, rows, rates, providerId]);
+  }, [perf.period, perfHours, rows, rates, providerId, basis]);
 
   const sinceLabel = life?.since ? dateFromKey(life.since).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }) : null;
   const referralEarnings = 0; // Placeholder: no referral-earnings source yet.
@@ -180,13 +187,13 @@ export default function HomePage() {
   const xInterval = (p: Period) => (p.range === "1M" ? 4 : p.range === "1D" ? 2 : 0);
 
   return (
-    <>
+    <div className="anim-fade-in">
       <PageHeader title={`${greeting()}, ${firstName(profile?.full_name || profile?.odoo_customer_name)}`} subtitle="Track and manage your solar savings" />
 
       <div className="mb-6 flex items-center gap-3">
-        <span className="text-base text-neutral-700">Site ID:</span>
+        <span className="shrink-0 text-base text-neutral-700">Site ID:</span>
         {systems.length > 1 ? (
-          <Select value={system.id} onChange={(e) => selectSystem(e.target.value)} className="w-auto min-w-[220px] py-2 text-sm">
+          <Select value={system.id} onChange={(e) => selectSystem(e.target.value)} wrapperClassName="w-full max-w-md" className="py-2 text-sm" aria-label="Select site">
             {systems.map((s) => (
               <option key={s.id} value={s.id}>
                 {(s.system_name || s.solis_plant_name || "System").trim()} · {s.solis_station_id}
@@ -210,7 +217,13 @@ export default function HomePage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-base text-neutral-600">Total savings from Solar</p>
-              {savingsAgg ? <p className="mt-1 text-4xl font-semibold tracking-tight text-neutral-900">{php(savingsAgg.savings)}</p> : <div className="mt-2 h-9 w-48 animate-pulse rounded bg-neutral-100" />}
+              {savingsAgg ? (
+                <p key={savingsBounds.title} className="anim-fade-in mt-1 text-4xl font-semibold tracking-tight text-neutral-900">
+                  {php(savingsAgg.savings)}
+                </p>
+              ) : (
+                <div className="mt-2 h-9 w-48 animate-pulse rounded bg-neutral-100" />
+              )}
               <p className="mt-1 text-sm text-neutral-500">{savingsBounds.subtitle}</p>
             </div>
             <PeriodNav period={savings.period} onChange={savings.setPeriod} />
@@ -231,16 +244,17 @@ export default function HomePage() {
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             <Segmented options={RANGES} value={savings.period.range} onChange={savings.setRange} size="sm" />
           </div>
-          {savingsAgg?.estimatedRate && (
+          {savingsAgg && savingsAgg.days > 0 && (
             <p className="mt-3 text-center text-xs text-neutral-500">
-              Estimated with {provider ? `${provider.code} ` : "MERALCO "}rates; some months use the nearest published rate.
+              {savingsAgg.tieredRate ? `Priced at the ${provider?.code ?? "MERALCO"} residential rate for your monthly consumption level` : `Priced at ${provider?.code ?? "MERALCO"} residential rates`}
+              {savingsAgg.estimatedRate ? "; some months use the nearest published rate." : "."}
             </p>
           )}
         </Card>
 
         <div className="flex flex-col gap-4">
           <button onClick={() => setCelebrate("savings")} className="text-left" disabled={!life}>
-            <Card className="transition-shadow hover:shadow-sm">
+            <Card className="transition-shadow duration-200 hover:shadow-sm">
               <div className="flex items-start justify-between">
                 <p className="text-base text-neutral-600">Total savings from solar</p>
                 <CoinsIcon className="h-8 w-8" />
@@ -250,7 +264,7 @@ export default function HomePage() {
             </Card>
           </button>
           <button onClick={() => setCelebrate("referral")} className="text-left">
-            <Card className="transition-shadow hover:shadow-sm">
+            <Card className="transition-shadow duration-200 hover:shadow-sm">
               <div className="flex items-start justify-between">
                 <p className="text-base text-neutral-600">Referral earnings</p>
                 <HandshakeIcon className="h-8 w-8" />
@@ -279,7 +293,13 @@ export default function HomePage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold text-neutral-700">{perfHasConsumption ? "Total consumption" : "Total production"}</p>
-              {perfAgg ? <p className="mt-1 text-3xl font-semibold tracking-tight text-neutral-900">{kwh(perfHasConsumption ? (perfAgg.consumption ?? 0) : perfAgg.production)}</p> : <div className="mt-2 h-8 w-40 animate-pulse rounded bg-neutral-100" />}
+              {perfAgg ? (
+                <p key={perfBounds.title} className="anim-fade-in mt-1 text-3xl font-semibold tracking-tight text-neutral-900">
+                  {kwh(perfHasConsumption ? (perfAgg.consumption ?? 0) : perfAgg.production)}
+                </p>
+              ) : (
+                <div className="mt-2 h-8 w-40 animate-pulse rounded bg-neutral-100" />
+              )}
               <p className="mt-1 text-sm text-neutral-500">{perfBounds.subtitle}</p>
             </div>
             <PeriodNav period={perf.period} onChange={perf.setPeriod} />
@@ -370,7 +390,7 @@ export default function HomePage() {
                 </p>
                 <p className="mt-0.5 text-xs text-neutral-500">as of {latest5?.timestamp ? dateTime(latest5.timestamp) : shortDate(new Date())}</p>
                 <div className="relative mt-4 h-10 overflow-hidden rounded-lg bg-neutral-200">
-                  <div className="h-full bg-brand-chartreuse" style={{ width: `${Math.max(0, Math.min(100, batteryLevel ?? 0))}%` }} />
+                  <div className="h-full bg-brand-chartreuse transition-[width] duration-500 ease-out" style={{ width: `${Math.max(0, Math.min(100, batteryLevel ?? 0))}%` }} />
                   <span className="absolute inset-y-0 left-3 flex items-center text-lg font-semibold text-brand-dark">{batteryLevel != null ? `${Math.round(batteryLevel)}%` : "—"}</span>
                 </div>
                 <p className="mt-3 text-sm text-neutral-600">{batteryKwh ? `${num(batteryKwh)} kWh battery` : "Battery storage"}</p>
@@ -391,15 +411,15 @@ export default function HomePage() {
       <CelebrationOverlay
         open={celebrate !== null}
         onClose={() => setCelebrate(null)}
-        kind={celebrate ?? "savings"}
-        amount={celebrate === "referral" ? referralEarnings : (life?.savings ?? 0)}
+        kind={lastKind.current.celebrate}
+        amount={lastKind.current.celebrate === "referral" ? referralEarnings : (life?.savings ?? 0)}
         since={sinceLabel}
         onShare={() => {
           setShare(celebrate ?? "savings");
           setCelebrate(null);
         }}
       />
-      <ShareModal open={share !== null} onClose={() => setShare(null)} kind={share ?? "savings"} amount={share === "referral" ? referralEarnings : (life?.savings ?? 0)} since={sinceLabel} code={profile?.referral_code ?? null} />
-    </>
+      <ShareModal open={share !== null} onClose={() => setShare(null)} kind={lastKind.current.share} amount={lastKind.current.share === "referral" ? referralEarnings : (life?.savings ?? 0)} since={sinceLabel} code={profile?.referral_code ?? null} />
+    </div>
   );
 }

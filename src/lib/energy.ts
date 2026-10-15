@@ -1,7 +1,7 @@
 import { supabase, fetchAll } from "./supabase";
 import { api } from "./api";
 import { addDays, dateFromKey, manilaDateKey, manilaMidnight, manilaParts, manilaToday } from "./format";
-import { rateFor } from "./savings";
+import { rateFor, tierBasis, type TierBasis } from "./savings";
 import type { DailyReading, FiveMinuteRow, HourBucket, Rate, SolarSystem } from "./types";
 
 /* ------------------------------------------------------------------ fetching */
@@ -175,6 +175,7 @@ export type Aggregate = {
   battery: number;
   savings: number;
   estimatedRate: boolean;
+  tieredRate: boolean; // at least one day priced at a consumption level (MERALCO residential)
   days: number; // days with data
 };
 
@@ -186,7 +187,7 @@ function splitConsumption(consumption: number | null, grid: number, battery: num
   return { grid: Math.min(grid, consumption), solar, battery: Math.min(battery, Math.max(consumption - grid, 0)) };
 }
 
-function sumPoints(points: SeriesPoint[], estimatedRate: boolean): Aggregate {
+function sumPoints(points: SeriesPoint[], estimatedRate: boolean, tieredRate: boolean): Aggregate {
   const withData = points.filter((p) => p.hasData);
   const hasConsumption = withData.some((p) => p.consumption != null);
   return {
@@ -198,23 +199,27 @@ function sumPoints(points: SeriesPoint[], estimatedRate: boolean): Aggregate {
     battery: withData.reduce((s, p) => s + p.battery, 0),
     savings: withData.reduce((s, p) => s + p.savings, 0),
     estimatedRate,
+    tieredRate,
     days: withData.length,
   };
 }
 
-/** Daily rows → one point per day / per month depending on the range. */
+/** Daily rows → one point per day / per month depending on the range. `rows` is the full history: the month's consumption picks the tier. */
 export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate[], providerId: number | null): Aggregate {
   const { start, end } = periodBounds(period);
+  const basis = tierBasis(rows);
   const inRange = rows.filter((r) => {
     const k = manilaDateKey(r.timestamp);
     return k >= start && k <= end;
   });
   let estimatedRate = false;
+  let tieredRate = false;
   const perDay = new Map<string, SeriesPoint>();
   for (const r of inRange) {
     const key = manilaDateKey(r.timestamp);
-    const { rate, estimated } = rateFor(rates, providerId, key);
+    const { rate, estimated, tiered } = rateFor(rates, providerId, key, basis);
     estimatedRate ||= estimated;
+    tieredRate ||= tiered && n(r.production_kwh) > 0;
     const production = n(r.production_kwh);
     const consumption = r.consumption_kwh == null ? null : Number(r.consumption_kwh);
     const split = splitConsumption(consumption, n(r.grid_import_kwh), n(r.battery_discharge_kwh));
@@ -259,12 +264,12 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
       points.push(perDay.get(k) ?? { key: k, label: fmtShort(k), production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
     }
   }
-  return sumPoints(points, estimatedRate);
+  return sumPoints(points, estimatedRate, tieredRate);
 }
 
-/** Hour buckets of one day → 24 points. */
-export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate[], providerId: number | null): Aggregate {
-  const { rate, estimated } = rateFor(rates, providerId, dateKey);
+/** Hour buckets of one day → 24 points. `basis` (from the daily history) prices the day at its month's consumption level. */
+export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate[], providerId: number | null, basis?: TierBasis): Aggregate {
+  const { rate, estimated, tiered } = rateFor(rates, providerId, dateKey, basis);
   const points: SeriesPoint[] = hours.map((h) => {
     const production = n(h.production_kwh);
     const consumption = h.consumption_kwh == null ? null : Number(h.consumption_kwh);
@@ -282,25 +287,28 @@ export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate
       hasData: h.points > 0,
     };
   });
-  return sumPoints(points, estimated);
+  return sumPoints(points, estimated, tiered && points.some((p) => p.production > 0));
 }
 
 /** Lifetime totals from all daily rows. */
 export function lifetime(rows: DailyReading[], rates: Rate[], providerId: number | null) {
+  const basis = tierBasis(rows);
   let production = 0;
   let savings = 0;
   let estimatedRate = false;
+  let tieredRate = false;
   let first: string | null = null;
   for (const r of rows) {
     const key = manilaDateKey(r.timestamp);
     const p = n(r.production_kwh);
     if (p > 0 && !first) first = key;
-    const { rate, estimated } = rateFor(rates, providerId, key);
+    const { rate, estimated, tiered } = rateFor(rates, providerId, key, basis);
     estimatedRate ||= estimated && p > 0;
+    tieredRate ||= tiered && p > 0;
     production += p;
     savings += p * rate;
   }
-  return { production, savings, estimatedRate, since: first };
+  return { production, savings, estimatedRate, tieredRate, since: first };
 }
 
 export const todayKey = () => manilaDateKey(manilaToday());

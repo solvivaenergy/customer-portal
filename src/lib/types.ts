@@ -28,7 +28,10 @@ export type SolarSystem = {
 };
 
 export type Provider = { id: number; name: string; code: string };
-export type Rate = { id: number; provider_id: number; rate: number; effective_date: string };
+/** One level of a tiered schedule: the ₱/kWh for a month whose consumption is above the previous level and up to this one. */
+export type RateTier = { consumption_kwh: number; rate_per_kwh: number };
+/** A DU's published schedule for one month (residential). `rate` is the flat ₱/kWh; `tiers` (MERALCO only so far) is sorted ascending. */
+export type Rate = { id: number; provider_id: number; rate: number; effective_date: string; customer_class: "residential" | "commercial"; tiers: RateTier[] };
 
 export type DailyReading = {
   timestamp: string; // 04:00Z = noon Manila of that day
