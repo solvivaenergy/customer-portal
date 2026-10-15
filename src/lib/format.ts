@@ -79,7 +79,13 @@ export const initials = (name: string | null | undefined) =>
     .map((s) => s[0]?.toUpperCase())
     .join("") || "?";
 
-export const firstName = (name: string | null | undefined) => (name ?? "").trim().split(/\s+/)[0] || "there";
+/** First word of a name, tolerating CRM formats such as ",Simplicio Hermogenes", "Hermogenes, Simplicio" or "Jean-Paul, Sr.". */
+export const firstName = (name: string | null | undefined) => {
+  const clean = (name ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
+  const [before = "", after = ""] = clean.split(/,\s*/, 2);
+  const candidate = after && !/^(jr|sr|ii|iii|iv)\.?$/i.test(after.split(/\s+/)[0]) ? after : before;
+  return candidate.split(/\s+/)[0]?.replace(/[,;:]+$/, "") || "there";
+};
 
 export function greeting(): string {
   const h = manilaParts(new Date()).hour;
