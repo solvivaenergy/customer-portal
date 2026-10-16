@@ -3,7 +3,7 @@ import { BatteryCharging, ChevronLeft, ChevronRight, Share2, Zap } from "lucide-
 import { CoinsIcon, HandshakeIcon } from "@/components/icons";
 import { usePortal } from "@/lib/portal";
 import { api } from "@/lib/api";
-import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, shiftPeriod, todayKey, yearDivider, type Aggregate, type Period, type RangeId } from "@/lib/energy";
+import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, settledDay, shiftPeriod, todayKey, yearDivider, type Aggregate, type Period, type RangeId } from "@/lib/energy";
 import { tierBasis } from "@/lib/savings";
 import { dateFromKey, kwh, manilaDateKey, num, php, firstName, greeting, shortDate, dateTime } from "@/lib/format";
 import type { DailyReading, FiveMinuteRow, HourBucket, LiveData } from "@/lib/types";
@@ -141,13 +141,15 @@ export default function HomePage() {
   // Which consumption level each month is priced at (MERALCO residential tiers); undefined until the history is in.
   const basis = useMemo(() => (rows ? tierBasis(rows) : undefined), [rows]);
 
+  // A past day's 1D totals come from its settled daily row (what 1W/1M show for that day); the hours
+  // only shape the bars. Today, and a day the nightly has not settled yet, stay on the hourly curve.
   const savingsAgg: Aggregate | null = useMemo(() => {
-    if (savings.period.range === "1D") return savingsHours?.key === savings.period.anchor ? aggregateHours(savingsHours.hours, savings.period.anchor, rates, providerId, basis) : null;
+    if (savings.period.range === "1D") return savingsHours?.key === savings.period.anchor ? aggregateHours(savingsHours.hours, savings.period.anchor, rates, providerId, basis, settledDay(rows, savings.period.anchor)) : null;
     return rows ? aggregateDaily(rows, savings.period, rates, providerId) : null;
   }, [savings.period, savingsHours, rows, rates, providerId, basis]);
 
   const perfAgg: Aggregate | null = useMemo(() => {
-    if (perf.period.range === "1D") return perfHours?.key === perf.period.anchor ? aggregateHours(perfHours.hours, perf.period.anchor, rates, providerId, basis) : null;
+    if (perf.period.range === "1D") return perfHours?.key === perf.period.anchor ? aggregateHours(perfHours.hours, perf.period.anchor, rates, providerId, basis, settledDay(rows, perf.period.anchor)) : null;
     return rows ? aggregateDaily(rows, perf.period, rates, providerId) : null;
   }, [perf.period, perfHours, rows, rates, providerId, basis]);
 

@@ -267,10 +267,30 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
   return sumPoints(points, estimatedRate, tieredRate);
 }
 
-/** Hour buckets of one day → 24 points. `basis` (from the daily history) prices the day at its month's consumption level. */
-export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate[], providerId: number | null, basis?: TierBasis): Aggregate {
+/**
+ * The daily-table row that can anchor the one-day view of a PAST day: Solis's settled totals for
+ * the day, the same figures the week/month views and the Monitoring Admin show. The hourly table
+ * integrates the five-minute curve instead and lands a few percent off (and hours written before
+ * 2026-10-09 hold no battery at all), so 1D and 1W disagreed for the same day. Today has no
+ * settled row yet (it is live), and a zero row is the nightly's placeholder, not a settled day.
+ */
+export function settledDay(rows: DailyReading[] | null | undefined, dateKey: string): DailyReading | null {
+  if (!rows || dateKey >= manilaDateKey(manilaToday())) return null;
+  const row = rows.find((r) => manilaDateKey(r.timestamp) === dateKey);
+  if (!row) return null;
+  return n(row.production_kwh) > 0 || n(row.consumption_kwh) > 0 ? row : null;
+}
+
+/**
+ * Hour buckets of one day → 24 points. `basis` (from the daily history) prices the day at its
+ * month's consumption level. `settled` (see settledDay) makes the day's TOTALS the daily row's
+ * figures; the hourly values then only shape the bars, scaled component by component so the bars
+ * add up to the card (a component the hours do not have, e.g. battery before a re-read, stays flat
+ * in the bars while the card still carries it). Without it the hourly table stands on its own.
+ */
+export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate[], providerId: number | null, basis?: TierBasis, settled?: DailyReading | null): Aggregate {
   const { rate, estimated, tiered } = rateFor(rates, providerId, dateKey, basis);
-  const points: SeriesPoint[] = hours.map((h) => {
+  let points: SeriesPoint[] = hours.map((h) => {
     const production = n(h.production_kwh);
     const consumption = h.consumption_kwh == null ? null : Number(h.consumption_kwh);
     // Battery share of the hour's consumption = what the battery discharged (hours before
@@ -287,6 +307,27 @@ export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate
       hasData: h.points > 0,
     };
   });
+  if (settled) {
+    const production = n(settled.production_kwh);
+    const consumption = settled.consumption_kwh == null ? null : Number(settled.consumption_kwh);
+    const split = splitConsumption(consumption, n(settled.grid_import_kwh), n(settled.battery_discharge_kwh));
+    const total = (f: (p: SeriesPoint) => number) => points.reduce((s, p) => s + f(p), 0);
+    const factor = (target: number, sum: number) => (sum > 0 ? target / sum : 0);
+    const fProduction = factor(production, total((p) => p.production));
+    const fGrid = factor(split.grid, total((p) => p.grid));
+    const fSolar = factor(split.solar, total((p) => p.solar));
+    const fBattery = factor(split.battery, total((p) => p.battery));
+    points = points.map((p) => {
+      const grid = p.grid * fGrid;
+      const solar = p.solar * fSolar;
+      const battery = p.battery * fBattery;
+      const prod = p.production * fProduction;
+      return { ...p, production: prod, grid, solar, battery, consumption: p.consumption == null ? null : grid + solar + battery, savings: prod * rate };
+    });
+    const agg = sumPoints(points, estimated, tiered && production > 0);
+    // days ≥ 1 keeps the chart (even with no hourly rows) instead of "the inverter did not report".
+    return { ...agg, production, consumption, ...split, savings: production * rate, days: Math.max(agg.days, 1) };
+  }
   return sumPoints(points, estimated, tiered && points.some((p) => p.production > 0));
 }
 
