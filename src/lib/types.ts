@@ -19,7 +19,9 @@ export type SolarSystem = {
   battery_capacity_kwh: number | null;
   address: string | null;
   status: string;
-  installation_date: string | null;
+  // Not installation_date: that column is where the station's history starts (Solis's first generation).
+  odoo_installed_date: string | null; // YYYY-MM-DD, install finished (Odoo "Installed Date", mirrored nightly)
+  energization_date: string | null; // YYYY-MM-DD, first day of solar production (Solis, mirrored nightly)
   solis_station_id: string | null;
   solis_plant_name: string | null;
   is_primary: boolean | null;

@@ -286,10 +286,13 @@ const LEAD_FIELDS = [
   "id", "name", "x_studio_crm_design_solis_station_id", "x_studio_crm_contract_system_size_kwp", "x_studio_system_size_kwp",
   "x_studio_crm_brand_battery", "x_studio_crm_model_battery", "x_studio_crm_quantity_battery", "x_studio_crm_size_per_unit_kwh_battery",
   "x_studio_crm_brand_inverter", "x_studio_crm_model_inverter", "x_studio_crm_quantity_inverter", "x_studio_crm_size_per_unit_kw_inverter",
-  "x_studio_energization_date", "user_id",
+  "user_id",
 ];
 
-/** Battery / inverter / energisation / sales rep for the login's own CRM leads (the nightly mirror does not copy these yet). */
+/**
+ * Battery / inverter / sales rep for the login's own CRM leads (the nightly mirror does not copy these yet).
+ * The installed and energization dates are mirrored into solar_systems (monitoring migration 31), not read here.
+ */
 function buildSystemDetails(prodList) {
   const webhook = clone(prodList, "Webhook");
   webhook.position = [0, 300];

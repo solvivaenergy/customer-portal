@@ -5,7 +5,8 @@
 | Login, reset password, change password | Supabase Auth (monitoring project) | Reset mail uses Supabase's default sender until custom SMTP (SES) is configured in Auth settings. Redirect URL `http://localhost:5173/reset-password` must be in Auth → URL configuration for the link to work in dev. |
 | Profile | `user_profiles` (own row; RLS) | Editable: full name, phone, address. Email is the auth email. Odoo stays the system of record; edits are local to Supabase. |
 | Systems / site selector | `solar_systems` (own + `system_access` grants; RLS) | Selector appears only when more than one system is visible. The monitoring API answers for the login's primary station only, so live data is used just for that site. |
-| System details: battery, inverter, energisation date, sales rep | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-system` `{lead_ids}` → `crm.lead` fields (`x_studio_crm_*_battery`, `x_studio_crm_*_inverter`, `x_studio_energization_date`, `user_id`) | Since 2026-10-12. `solar_systems.battery_capacity_kwh` is empty for every system (the nightly Solis lookup finds nothing), so the lead is the source; battery kWh = quantity × size per unit. Longer term the nightly mirror should copy these into `solar_systems` so no Odoo round-trip is needed. |
+| System details: battery, inverter, sales rep | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-system` `{lead_ids}` → `crm.lead` fields (`x_studio_crm_*_battery`, `x_studio_crm_*_inverter`, `user_id`) | Since 2026-10-12. `solar_systems.battery_capacity_kwh` is empty for every system (the nightly Solis lookup finds nothing), so the lead is the source; battery kWh = quantity × size per unit. Longer term the nightly mirror should copy these into `solar_systems` so no Odoo round-trip is needed. On 2026-10-26 the staging workflow answered `{error}` (Odoo authentication returned nothing) after an odoo.sh rebuild: the alias in `$vars.ODOO_SH_STAGING_URL` already served the new build, but `ODOO_SH_STAGING_DB` named the old database and `ODOO_SH_STAGING_KEY` was a key from the old build. See "Staging n8n workflows" below. |
+| Installation date, energization date | `solar_systems.odoo_installed_date` / `energization_date` (monitoring migration 31, filled nightly by `api/sync_identity_mirror.py`) | Since 2026-10-26. Installation = Odoo lead's "Installed Date" (`x_studio_intalled_date`, install finished). Energization = Solis's first day of solar production (`fisGenerateTime`), never moved later (Solis re-stamps it after an inverter swap). Odoo's `x_studio_energization_date` is empty on every lead and is not used. `solar_systems.installation_date` is the history start (also Solis's first generation), not shown. Installed → energized: 57% same day, 23% next day, 36 of 709 plants more than a week apart. |
 | Daily history, 1W/1M/1Y/YTD | `energy_readings` (one row per day, noon-Manila timestamp) | Today's row is a zero placeholder until the 02:00 sync; the Home page patches today from `/app/live`, including `today_battery_discharge_kwh` (since 2026-10-09; before that today's Battery share was always 0.0). Past days' Battery = `battery_discharge_kwh`, Solis's settled day total. |
 | 1D view | `/app/hourly` (today, live from the five-minute cache) / `energy_readings_hourly` (past days) | Battery share per hour = `battery_discharge_kwh`, integrated from the five-minute curve (monitoring migration 24, 2026-10-09). Hours stored before that date hold 0 until the fleet hourly re-read; the integrated day can differ from the daily table's Solis figure by a few kWh. |
 | Battery card | `/app/live` + latest `energy_readings_five_minutes` row | Systems with no battery show a "No battery storage" card. |
@@ -31,7 +32,7 @@ team project, cloned from the production ones but aimed at the odoo.sh **staging
 | `[STAGING] Portal Get My Tickets → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-tickets` | JSON-RPC authenticate + `search_read` (`partner_email ilike`), fields incl. `ticket_ref`/`team_id`/`tag_ids`; Odoo errors are returned as `{error}` instead of `[]`. |
 | `[STAGING] Portal Get My PMS → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-pms` | `maintenance.request` `search_read` by `x_pms_email` / `x_pms_partner_id` / `x_pms_crm_lead_id`. |
 | `[STAGING] Portal PMS Request → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/pms-request` | Code node maps the wizard payload like `solvivaenergy/pms` `server.js` does, then `maintenance.request` `create`; answers `{id}`. |
-| `[STAGING] Portal Get My System → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-system` | `crm.lead` `search_read` by lead ids (max 20): equipment, energisation date, sales rep. |
+| `[STAGING] Portal Get My System → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-my-system` | `crm.lead` `search_read` by lead ids (max 20): equipment, sales rep. |
 
 **Security note for production:** these webhooks trust the identifiers the browser sends (email, partner id,
 lead ids). Before go-live the lookups must verify the Supabase JWT and derive the identifiers server-side
@@ -39,9 +40,16 @@ lead ids). Before go-live the lookups must verify the Supabase JWT and derive th
 
 The `Ticket_*` variables are **project-scoped**; a workflow created through the API lands in the key
 owner's personal project where they resolve to `undefined`, so the script transfers each workflow into
-the team project. Production workflows are only read by the script, never changed. The staging build
-expires when odoo.sh rebuilds it; if that happens, update `ODOO_SH_STAGING_URL`/`_DB` in n8n and re-run
-the script (no portal change needed).
+the team project. Production workflows are only read by the script, never changed.
+
+odoo.sh rebuilds staging about once a month as a fresh copy of production: the database name changes and
+every API key made on the old build stops working (`ODOO_SH_STAGING_URL` is the alias
+`https://solviva-erp-staging.odoo.com`, which always follows the current build). The workflows read the
+`$vars` at run time, so no script re-run and no portal change is needed. Re-point everything with the
+`odoo-staging-rotate` repo: make a new API key for `admin@solvivaenergy.com` on staging (Preferences →
+Account Security), then `./py.cmd rotate.py apply --url https://solviva-erp-staging.odoo.com --env-file
+C:/Users/roald/Documents/GitHub/solviva-inquiry/.env --deploy` (that repo has no `.env` of its own; `plan`
+instead of `apply` is read-only).
 
 Portal selection: repository variable `VITE_N8N_WEBHOOK_URL` = `…/webhook/staging` (demo) or
 `…/webhook` (production); locally `VITE_N8N_WEBHOOK_URL=/api/n8n/staging` goes through the Vite proxy.

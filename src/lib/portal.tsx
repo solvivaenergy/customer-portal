@@ -12,7 +12,7 @@ type PortalState = {
   providers: Provider[];
   rates: Rate[];
   providerFor: (s: SolarSystem | null) => Provider | null;
-  /** Equipment details from the CRM lead (battery, inverter, energisation, sales rep); null while loading or when unavailable. */
+  /** Equipment details from the CRM lead (battery, inverter, sales rep); null while loading or when unavailable. */
   detailsFor: (s: SolarSystem | null) => SystemDetails | null;
   loading: boolean;
   error: string | null;
@@ -54,7 +54,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     try {
       const [p, s, pr, rt, tr] = await Promise.all([
         supabase.from("user_profiles").select("id,full_name,phone,address,referral_code,solis_station_id,electricity_provider_id,odoo_customer_name,odoo_partner_id").eq("id", user.id).maybeSingle(),
-        supabase.from("solar_systems").select("id,user_id,system_name,capacity_kwp,installation_date,battery_capacity_kwh,address,status,solis_station_id,solis_plant_name,is_primary,electricity_provider_id,odoo_lead_id").order("is_primary", { ascending: false }).order("created_at"),
+        supabase.from("solar_systems").select("id,user_id,system_name,capacity_kwp,odoo_installed_date,energization_date,battery_capacity_kwh,address,status,solis_station_id,solis_plant_name,is_primary,electricity_provider_id,odoo_lead_id").order("is_primary", { ascending: false }).order("created_at"),
         supabase.from("electricity_providers").select("id,name,code").order("id"),
         // Homes are billed on the residential schedule; commercial rows (none yet) would otherwise collide on the same date.
         supabase.from("electricity_rates").select("id,provider_id,rate,effective_date,customer_class").eq("customer_class", "residential").order("effective_date"),

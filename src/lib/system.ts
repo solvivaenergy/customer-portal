@@ -1,9 +1,11 @@
 import { env } from "./env";
 
 /**
- * Equipment details come from the customer's CRM lead in Odoo (battery, inverter, energisation,
- * sales rep). The nightly mirror does not copy these into `solar_systems` yet, so the portal asks
- * the staging n8n workflow `get-my-system` for the login's own leads.
+ * Equipment details come from the customer's CRM lead in Odoo (battery, inverter, sales rep). The
+ * nightly mirror does not copy these into `solar_systems` yet, so the portal asks the staging n8n
+ * workflow `get-my-system` for the login's own leads. The installed and energization dates are
+ * mirrored (`solar_systems.odoo_installed_date`, `energization_date`); Odoo's own energization
+ * field is empty on every lead.
  */
 export type SystemDetails = {
   leadId: number;
@@ -11,7 +13,6 @@ export type SystemDetails = {
   systemSizeKwp: number | null;
   battery: { brand: string | null; model: string | null; units: number; kwhPerUnit: number | null; totalKwh: number | null } | null;
   inverter: { brand: string | null; model: string | null; units: number; kwPerUnit: number | null } | null;
-  energizationDate: string | null; // YYYY-MM-DD
   salesRep: string | null;
 };
 
@@ -28,7 +29,6 @@ type Lead = {
   x_studio_crm_model_inverter: string | false;
   x_studio_crm_quantity_inverter: string | false;
   x_studio_crm_size_per_unit_kw_inverter: number | false;
-  x_studio_energization_date: string | false;
   user_id: [number, string] | false;
 };
 
@@ -52,7 +52,6 @@ function toDetails(l: Lead): SystemDetails {
       ? { brand: str(l.x_studio_crm_brand_battery), model: str(l.x_studio_crm_model_battery), units: batteryUnits, kwhPerUnit, totalKwh: kwhPerUnit != null ? kwhPerUnit * batteryUnits : null }
       : null,
     inverter: hasInverter ? { brand: str(l.x_studio_crm_brand_inverter), model: str(l.x_studio_crm_model_inverter), units: inverterUnits || 1, kwPerUnit: num(l.x_studio_crm_size_per_unit_kw_inverter) } : null,
-    energizationDate: l.x_studio_energization_date ? String(l.x_studio_energization_date).slice(0, 10) : null,
     salesRep: l.user_id ? l.user_id[1] : null,
   };
 }
