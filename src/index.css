@@ -120,6 +120,15 @@ body {
   animation: slide-out-left 200ms ease-in both;
 }
 
+/* A strip that scrolls sideways (the account tabs) without a scrollbar: the bar would sit on top of
+   the active-tab underline, and the Figma mobile frames have the tabs simply run off the edge. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Users who asked for less motion get instant state changes (spinners keep turning). */
 @media (prefers-reduced-motion: reduce) {
   *:not(.animate-spin),

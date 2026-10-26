@@ -9,7 +9,30 @@ import { invalidatePms } from "@/lib/usePms";
 import { PMS } from "@/content/contact";
 import { addDays, manilaDateKey, manilaToday } from "@/lib/format";
 
-const STEPS = ["Client & site information", "Preferred schedule", "Site access", "System condition"];
+/** `short` is the label under the step number on a phone, where the four steps sit in one row. */
+const STEPS = [
+  { title: "Client & site information", short: "Client information" },
+  { title: "Preferred schedule", short: "Preferred schedule" },
+  { title: "Site access", short: "Site access" },
+  { title: "System condition", short: "System condition" },
+];
+
+/** The four steps: a row of numbered circles with labels underneath on a phone (Figma "Mobile_support_PMS request"), a vertical list beside the form from lg up. */
+export function PmsSteps({ step }: { step: number }) {
+  return (
+    <ol className="flex justify-between gap-2 lg:flex-col lg:justify-start lg:gap-5">
+      {STEPS.map((s, i) => (
+        <li key={s.title} className="flex flex-1 flex-col items-center gap-2 text-center lg:flex-none lg:flex-row lg:gap-3 lg:text-left">
+          <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors duration-300", i === step ? "border-brand-olive bg-green-50 text-brand-olive" : i < step ? "border-brand-olive bg-brand-olive text-white" : "border-neutral-300 text-neutral-500")}>{i < step ? <Check className="h-4 w-4" /> : i + 1}</span>
+          <span className={cx("text-xs leading-4 transition-colors duration-300 lg:text-base lg:leading-normal", i === step ? "font-semibold text-neutral-900" : "text-neutral-500")}>
+            <span className="lg:hidden">{s.short}</span>
+            <span className="hidden lg:inline">{s.title}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 const TIME_SLOTS = [
   { id: "Morning (8:00 AM - 12 NN)", title: "Morning", sub: "8:00 AM - 12 NN" },
   { id: "Afternoon (1:00 PM - 5:00 PM)", title: "Afternoon", sub: "1:00 PM - 5:00 PM" },
@@ -125,19 +148,12 @@ export default function PmsRequestPage() {
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "Support", to: "/support" }, { label: "Request PMS" }]} />
       <PageHeader title="Request PMS" subtitle="Fill out this form to request a Preventive Maintenance Service (PMS) for your system. Our team will reach out to you to coordinate the schedule." />
       <div className="anim-fade-up">
-        <Card className="grid gap-8 lg:grid-cols-[320px_1fr]">
-          <ol className="flex flex-col gap-5">
-            {STEPS.map((s, i) => (
-              <li key={s} className="flex items-center gap-3">
-                <span className={cx("flex h-7 w-7 items-center justify-center rounded-full border text-sm font-semibold transition-colors duration-300", i === step ? "border-brand-olive bg-green-50 text-brand-olive" : i < step ? "border-brand-olive bg-brand-olive text-white" : "border-neutral-300 text-neutral-500")}>{i < step ? <Check className="h-4 w-4" /> : i + 1}</span>
-                <span className={cx("text-base transition-colors duration-300", i === step ? "font-semibold text-neutral-900" : "text-neutral-500")}>{s}</span>
-              </li>
-            ))}
-          </ol>
+        <Card className="grid gap-6 lg:grid-cols-[320px_1fr] lg:gap-8">
+          <PmsSteps step={step} />
 
           <div>
             <h2 className="text-2xl font-semibold text-neutral-900">
-              <span className="text-brand-olive">Step {step + 1}:</span> {STEPS[step]}
+              <span className="text-brand-olive">Step {step + 1}:</span> {STEPS[step].title}
             </h2>
             {error && (
               <div className="mt-4">

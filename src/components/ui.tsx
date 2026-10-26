@@ -146,8 +146,17 @@ export function Tabs<T extends string>({
   const [bar, setBar] = useState<{ left: number; width: number } | null>(null);
   useLayoutEffect(() => {
     const measure = () => {
-      const el = listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      const list = listRef.current;
+      const el = list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
       setBar(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+      // On a phone the strip scrolls sideways (scrollbar hidden), so bring the active tab into view —
+      // horizontally only; scrollIntoView could also move the page.
+      if (list && el) {
+        const left = Math.max(0, el.offsetLeft - 16);
+        const right = Math.min(list.scrollWidth, el.offsetLeft + el.offsetWidth + 16);
+        if (left < list.scrollLeft) list.scrollTo({ left, behavior: "smooth" });
+        else if (right > list.scrollLeft + list.clientWidth) list.scrollTo({ left: right - list.clientWidth, behavior: "smooth" });
+      }
     };
     measure();
     window.addEventListener("resize", measure);
@@ -155,7 +164,7 @@ export function Tabs<T extends string>({
     return () => window.removeEventListener("resize", measure);
   }, [value, tabs]);
   return (
-    <div ref={listRef} className={cx("relative flex gap-4 overflow-x-auto border-b border-neutral-200", className)} role="tablist">
+    <div ref={listRef} className={cx("no-scrollbar relative flex gap-4 overflow-x-auto border-b border-neutral-200", className)} role="tablist">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -172,22 +181,27 @@ export function Tabs<T extends string>({
   );
 }
 
-/** Segmented pill control (used for Support | PMS and 1D/1W/1M/1Y/YTD). */
+/**
+ * Segmented pill control (used for Support | PMS and 1D/1W/1M/1Y/YTD). With `stretch` the segments
+ * share the control's width equally and the control fills whatever width `className` gives it.
+ */
 export function Segmented<T extends string>({
   options,
   value,
   onChange,
   size = "md",
+  stretch,
   className,
 }: {
   options: { id: T; label: string }[];
   value: T;
   onChange: (id: T) => void;
   size?: "sm" | "md";
+  stretch?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cx("inline-flex rounded-lg border border-neutral-200 bg-neutral-50 p-1", className)}>
+    <div className={cx(stretch ? "flex" : "inline-flex", "rounded-lg border border-neutral-200 bg-neutral-50 p-1", className)}>
       {options.map((o) => (
         <button
           key={o.id}
@@ -196,6 +210,7 @@ export function Segmented<T extends string>({
           className={cx(
             "rounded-md font-semibold transition-[color,background-color,box-shadow] duration-200",
             size === "sm" ? "px-3 py-1 text-sm" : "px-5 py-2 text-sm",
+            stretch && "flex-1",
             value === o.id ? "bg-white text-neutral-800 shadow-xs" : "text-neutral-500 hover:text-neutral-700",
           )}
         >

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ChevronRight, Inbox } from "lucide-react";
 import { PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/icons";
 import { Breadcrumb } from "@/layout/Breadcrumb";
@@ -36,8 +36,9 @@ function Pagination({ page, pages, onChange }: { page: number; pages: number; on
   }
   return (
     <div className="mt-4 flex items-center justify-between text-sm">
-      <button onClick={() => onChange(page - 1)} disabled={page === 1} className="flex items-center gap-2 font-semibold text-neutral-600 disabled:opacity-40">
-        <ArrowLeft className="h-4 w-4" /> Previous
+      {/* Phones show arrows only (Figma "Mobile_support"); the words come back from sm up. */}
+      <button onClick={() => onChange(page - 1)} disabled={page === 1} className="flex items-center gap-2 font-semibold text-neutral-600 disabled:opacity-40" aria-label="Previous page">
+        <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous</span>
       </button>
       <div className="flex items-center gap-1">
         {items.map((it, i) =>
@@ -52,21 +53,36 @@ function Pagination({ page, pages, onChange }: { page: number; pages: number; on
           ),
         )}
       </div>
-      <button onClick={() => onChange(page + 1)} disabled={page === pages} className="flex items-center gap-2 font-semibold text-neutral-600 disabled:opacity-40">
-        Next <ArrowRight className="h-4 w-4" />
+      <button onClick={() => onChange(page + 1)} disabled={page === pages} className="flex items-center gap-2 font-semibold text-neutral-600 disabled:opacity-40" aria-label="Next page">
+        <span className="hidden sm:inline">Next</span> <ArrowRight className="h-4 w-4" />
       </button>
     </div>
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-6 py-3 font-medium">{children}</th>;
+/* The activities table: on a phone only the reference and the status (Figma "Mobile_support"); the
+   other columns (`wide`) appear from md up. Every row opens the ticket / request. */
+const cell = "px-4 py-4 md:px-6";
+const wideCell = "hidden md:table-cell";
+
+function Th({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+  return <th className={cx("px-4 py-3 font-medium md:px-6", wide && wideCell)}>{children}</th>;
+}
+
+function RefLink({ to, children }: { to: string; children: React.ReactNode }) {
+  // The row itself navigates on click; the link keeps the reference focusable and stops the double navigation.
+  return (
+    <Link to={to} onClick={(e) => e.stopPropagation()} className="font-medium text-neutral-900 hover:text-brand-blue">
+      {children}
+    </Link>
+  );
 }
 
 export default function SupportHubPage() {
   const { profile, systems } = usePortal();
   const tickets = useTickets(profile?.email);
   const pms = useMyPms(profile, systems);
+  const navigate = useNavigate();
   const [kind, setKind] = useState<"support" | "pms">("support");
   const [page, setPage] = useState(1);
 
@@ -87,8 +103,10 @@ export default function SupportHubPage() {
           <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." />
         </div>
 
-        <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">My activities</h2>
-        <div className="mb-4 flex items-center justify-between">
+        {/* Phone: heading + Refresh on one line, the Support | PMS switch stretched across the next
+            (Figma "Mobile_support"). From sm up: heading, then the switch beside Refresh. */}
+        <div className="mb-4 mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
+          <h2 className="text-2xl font-semibold text-neutral-900 sm:basis-full">My activities</h2>
           <Segmented
             options={[
               { id: "support", label: "Support" },
@@ -99,8 +117,10 @@ export default function SupportHubPage() {
               setKind(k);
               setPage(1);
             }}
+            stretch
+            className="order-last basis-full sm:order-none sm:basis-auto"
           />
-          <Button variant="ghost" size="sm" onClick={() => (kind === "support" ? tickets.refresh() : pms.refresh())} disabled={active.loading}>
+          <Button variant="ghost" size="sm" onClick={() => (kind === "support" ? tickets.refresh() : pms.refresh())} disabled={active.loading} className="ml-auto sm:order-last">
             Refresh
           </Button>
         </div>
@@ -133,24 +153,22 @@ export default function SupportHubPage() {
                   <thead className="bg-neutral-100 text-neutral-700">
                     <tr>
                       <Th>Ticket No.</Th>
-                      <Th>Subject</Th>
-                      <Th>Description</Th>
-                      <Th>Created</Th>
+                      <Th wide>Subject</Th>
+                      <Th wide>Description</Th>
+                      <Th wide>Created</Th>
                       <Th>Status</Th>
                     </tr>
                   </thead>
                   <tbody>
                     {(visible as Ticket[]).map((t) => (
-                      <tr key={t.id} className="border-t border-neutral-200 hover:bg-neutral-50">
-                        <td className="px-6 py-4">
-                          <Link to={`/support/tickets/${t.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
-                            {t.ref}
-                          </Link>
+                      <tr key={t.id} onClick={() => navigate(`/support/tickets/${t.id}`)} className="cursor-pointer border-t border-neutral-200 hover:bg-neutral-50">
+                        <td className={cell}>
+                          <RefLink to={`/support/tickets/${t.id}`}>{t.ref}</RefLink>
                         </td>
-                        <td className="px-6 py-4 text-neutral-700">{truncate(t.subject, 40)}</td>
-                        <td className="px-6 py-4 text-neutral-600">{truncate(t.description, 48) || "—"}</td>
-                        <td className="px-6 py-4 text-neutral-700">{shortDate(t.createdAt)}</td>
-                        <td className="px-6 py-4">
+                        <td className={cx(cell, wideCell, "text-neutral-700")}>{truncate(t.subject, 40)}</td>
+                        <td className={cx(cell, wideCell, "text-neutral-600")}>{truncate(t.description, 48) || "—"}</td>
+                        <td className={cx(cell, wideCell, "text-neutral-700")}>{shortDate(t.createdAt)}</td>
+                        <td className={cell}>
                           <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>
                         </td>
                       </tr>
@@ -164,24 +182,22 @@ export default function SupportHubPage() {
                   <thead className="bg-neutral-100 text-neutral-700">
                     <tr>
                       <Th>Request No.</Th>
-                      <Th>Subject</Th>
-                      <Th>Scheduled visit</Th>
-                      <Th>Requested</Th>
+                      <Th wide>Subject</Th>
+                      <Th wide>Scheduled visit</Th>
+                      <Th wide>Requested</Th>
                       <Th>Status</Th>
                     </tr>
                   </thead>
                   <tbody>
                     {(visible as PmsRecord[]).map((r) => (
-                      <tr key={r.id} className="border-t border-neutral-200 hover:bg-neutral-50">
-                        <td className="px-6 py-4">
-                          <Link to={`/support/pms/requests/${r.id}`} className="font-medium text-neutral-900 hover:text-brand-blue">
-                            {r.ref}
-                          </Link>
+                      <tr key={r.id} onClick={() => navigate(`/support/pms/requests/${r.id}`)} className="cursor-pointer border-t border-neutral-200 hover:bg-neutral-50">
+                        <td className={cell}>
+                          <RefLink to={`/support/pms/requests/${r.id}`}>{r.ref}</RefLink>
                         </td>
-                        <td className="px-6 py-4 text-neutral-700">{truncate(r.name, 44)}</td>
-                        <td className="px-6 py-4 text-neutral-600">{r.scheduleDate ? dateTime(r.scheduleDate) : "To be confirmed"}</td>
-                        <td className="px-6 py-4 text-neutral-700">{r.requestDate ? longDate(r.requestDate) : shortDate(r.createdAt)}</td>
-                        <td className="px-6 py-4">
+                        <td className={cx(cell, wideCell, "text-neutral-700")}>{truncate(r.name, 44)}</td>
+                        <td className={cx(cell, wideCell, "text-neutral-600")}>{r.scheduleDate ? dateTime(r.scheduleDate) : "To be confirmed"}</td>
+                        <td className={cx(cell, wideCell, "text-neutral-700")}>{r.requestDate ? longDate(r.requestDate) : shortDate(r.createdAt)}</td>
+                        <td className={cell}>
                           <Badge tone={STATUS_TONE[r.status]}>{r.stage}</Badge>
                         </td>
                       </tr>

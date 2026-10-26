@@ -82,7 +82,9 @@ export function ShareModal({ open, onClose, kind, amount, since, code }: { open:
   );
 }
 
-const CONFETTI_COLORS = { savings: ["#8be114", "#d2ff1e", "#def0d8", "#15803d"], referral: ["#006ac6", "#00a7ea", "#d2ff1e", "#ffffff"] };
+// Pieces fly over the card as well as the backdrop, and on a phone the card is the whole screen, so no
+// piece may share the card's own colour (chartreuse for savings, royal blue for referrals).
+const CONFETTI_COLORS = { savings: ["#508908", "#1f522b", "#15803d", "#8be114"], referral: ["#00a7ea", "#d2ff1e", "#ffffff", "#8be114"] };
 
 /** Small seeded PRNG (mulberry32) so a burst is random but stable across re-renders. */
 function rng(seed: number) {
@@ -137,10 +139,11 @@ export function CelebrationOverlay({ open, onClose, kind, amount, since, onShare
   const isSavings = kind === "savings";
   return (
     <Overlay>
-      <div className={cx("fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-neutral-900/70 p-4", exiting ? "anim-fade-out" : "anim-fade-in")} onClick={onClose}>
-        {/* After the card in the DOM so the pieces fly over it; they ignore pointer events. */}
-        <div className={cx("relative w-full max-w-md rounded-2xl p-8 text-center shadow-lg", isSavings ? "bg-brand-chartreuse text-brand-dark" : "bg-brand-blue text-white", exiting ? "anim-pop-out" : "anim-pop-in")} onClick={(e) => e.stopPropagation()}>
-          <h2 className="text-2xl font-semibold">
+      <div className={cx("fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-neutral-900/70 sm:p-4", exiting ? "anim-fade-out" : "anim-fade-in")} onClick={onClose}>
+        {/* On a phone the card is the whole screen (Figma "Savings pop up"); from sm up it is a centred modal.
+            The confetti comes after it in the DOM so the pieces fly over it; they ignore pointer events. */}
+        <div className={cx("relative flex h-full w-full flex-col justify-center p-8 text-center sm:h-auto sm:max-w-md sm:rounded-2xl sm:shadow-lg", isSavings ? "bg-brand-chartreuse text-brand-dark" : "bg-brand-blue text-white", exiting ? "anim-pop-out" : "anim-pop-in")} onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-3xl font-semibold sm:text-2xl">
             {isSavings ? "You saved " : "You earned "}
             <span className={isSavings ? "text-brand-blue" : "text-brand-chartreuse"}>{php(amount, { decimals: isSavings ? 2 : 0 })}</span>
             {isSavings ? " with solar!" : " with your referrals"}
