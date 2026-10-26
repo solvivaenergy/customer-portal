@@ -249,8 +249,14 @@ export default function HomePage() {
             </div>
             {savingsAgg && savingsAgg.days > 0 && (
               <p className="mt-3 text-center text-xs text-neutral-500">
-                {savingsAgg.tieredRate ? `Priced at the ${provider?.code ?? "MERALCO"} residential rate for your monthly consumption level` : `Priced at ${provider?.code ?? "MERALCO"} residential rates`}
-                {savingsAgg.estimatedRate ? "; some months use the nearest published rate." : "."}
+                {`Savings are your estimated ${provider?.code ?? "MERALCO"} bill without solar minus your bill with solar, plus a credit for energy sent to the grid, `}
+                {savingsAgg.tieredRate
+                  ? `at the residential rate for your monthly consumption level.`
+                  : savingsAgg.flatRate
+                    ? `at the standard residential rate until your first full month sets your consumption level.`
+                    : `at residential rates.`}
+                {savingsAgg.tieredRate && savingsAgg.flatRate ? " Months before your first full month use the standard rate." : ""}
+                {savingsAgg.estimatedRate ? " Some months use the nearest published rate." : ""}
               </p>
             )}
           </Card>

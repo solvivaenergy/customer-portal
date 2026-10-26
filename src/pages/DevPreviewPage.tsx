@@ -9,7 +9,7 @@ const MONTHS = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "
 const SAMPLE: SeriesPoint[] = MONTHS.map((label, i) => {
   const key = i < 2 ? `2025-${11 + i}` : `2026-${String(i - 1).padStart(2, "0")}`;
   const production = 400 + Math.round(300 * Math.sin((i / 12) * Math.PI));
-  return { key, label, production, consumption: production + 120, grid: 150, solar: production - 80, battery: 50, savings: production * 14.7, hasData: true };
+  return { key, label, production, consumption: production + 120, grid: 150, solar: production - 80, battery: 50, exported: 0, savings: production * 14.7, hasData: true };
 });
 
 export default function DevPreviewPage() {

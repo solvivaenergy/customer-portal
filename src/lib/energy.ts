@@ -1,7 +1,7 @@
 import { supabase, fetchAll } from "./supabase";
 import { api } from "./api";
 import { addDays, dateFromKey, manilaDateKey, manilaMidnight, manilaParts, manilaToday } from "./format";
-import { rateFor, tierBasis, type TierBasis } from "./savings";
+import { rateFor, savingsFor, tierBasis, type RateInfo, type TierBasis } from "./savings";
 import type { DailyReading, FiveMinuteRow, HourBucket, Rate, SolarSystem } from "./types";
 
 /* ------------------------------------------------------------------ fetching */
@@ -162,20 +162,27 @@ export type SeriesPoint = {
   grid: number;
   solar: number;
   battery: number;
+  exported: number; // kWh sent to the grid
   savings: number;
   hasData: boolean;
 };
 
-export type Aggregate = {
+/** How the period's savings were priced (see savings.ts rateFor); each flag is true when at least one point with data used it. */
+export type RateFlags = {
+  estimatedRate: boolean;
+  tieredRate: boolean; // priced at a consumption level (MERALCO residential)
+  flatRate: boolean; // a tiered DU priced at its flat rate: no full month of data sets the level yet
+};
+
+export type Aggregate = RateFlags & {
   points: SeriesPoint[];
   production: number;
   consumption: number | null; // null when the system has no consumption data in the period
   grid: number;
   solar: number;
   battery: number;
+  exported: number;
   savings: number;
-  estimatedRate: boolean;
-  tieredRate: boolean; // at least one day priced at a consumption level (MERALCO residential)
   days: number; // days with data
 };
 
@@ -187,7 +194,17 @@ function splitConsumption(consumption: number | null, grid: number, battery: num
   return { grid: Math.min(grid, consumption), solar, battery: Math.min(battery, Math.max(consumption - grid, 0)) };
 }
 
-function sumPoints(points: SeriesPoint[], estimatedRate: boolean, tieredRate: boolean): Aggregate {
+const noFlags = (): RateFlags => ({ estimatedRate: false, tieredRate: false, flatRate: false });
+
+/** Fold one priced point's rate info into the period's flags. The export estimate only counts when kWh were exported. */
+function noteFlags(flags: RateFlags, info: RateInfo, hasData: boolean, exported: number) {
+  flags.estimatedRate ||= info.estimated || (info.exportEstimated && exported > 0);
+  if (!hasData) return;
+  flags.tieredRate ||= info.tiered;
+  flags.flatRate ||= info.flat;
+}
+
+function sumPoints(points: SeriesPoint[], flags: RateFlags): Aggregate {
   const withData = points.filter((p) => p.hasData);
   const hasConsumption = withData.some((p) => p.consumption != null);
   return {
@@ -197,14 +214,21 @@ function sumPoints(points: SeriesPoint[], estimatedRate: boolean, tieredRate: bo
     grid: withData.reduce((s, p) => s + p.grid, 0),
     solar: withData.reduce((s, p) => s + p.solar, 0),
     battery: withData.reduce((s, p) => s + p.battery, 0),
+    exported: withData.reduce((s, p) => s + p.exported, 0),
     savings: withData.reduce((s, p) => s + p.savings, 0),
-    estimatedRate,
-    tieredRate,
+    ...flags,
     days: withData.length,
   };
 }
 
-/** Daily rows → one point per day / per month depending on the range. `rows` is the full history: the month's consumption picks the tier. */
+const emptyPoint = (key: string, label: string): SeriesPoint => ({ key, label, production: 0, consumption: null, grid: 0, solar: 0, battery: 0, exported: 0, savings: 0, hasData: false });
+
+/**
+ * Daily rows → one point per day / per month depending on the range. `rows` is the full history:
+ * each month's consumption and grid import pick the levels its days are priced at (savings.ts).
+ * A day's savings = its bill without solar − its bill with solar + its export credit; the month's
+ * figure is the sum of its days, which equals the same formula on the month's totals.
+ */
 export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate[], providerId: number | null): Aggregate {
   const { start, end } = periodBounds(period);
   const basis = tierBasis(rows);
@@ -212,25 +236,26 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
     const k = manilaDateKey(r.timestamp);
     return k >= start && k <= end;
   });
-  let estimatedRate = false;
-  let tieredRate = false;
+  const flags = noFlags();
   const perDay = new Map<string, SeriesPoint>();
   for (const r of inRange) {
     const key = manilaDateKey(r.timestamp);
-    const { rate, estimated, tiered } = rateFor(rates, providerId, key, basis);
-    estimatedRate ||= estimated;
-    tieredRate ||= tiered && n(r.production_kwh) > 0;
+    const info = rateFor(rates, providerId, key, basis);
     const production = n(r.production_kwh);
     const consumption = r.consumption_kwh == null ? null : Number(r.consumption_kwh);
+    const exported = n(r.grid_export_kwh);
     const split = splitConsumption(consumption, n(r.grid_import_kwh), n(r.battery_discharge_kwh));
+    const hasData = production > 0 || (consumption ?? 0) > 0;
+    noteFlags(flags, info, hasData, exported);
     perDay.set(key, {
       key,
       label: fmtShort(key),
       production,
       consumption,
       ...split,
-      savings: production * rate,
-      hasData: production > 0 || (consumption ?? 0) > 0,
+      exported,
+      savings: savingsFor({ production, consumption, grid: n(r.grid_import_kwh), exported }, info),
+      hasData,
     });
   }
 
@@ -241,7 +266,7 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
     for (let k = start; k <= end; ) {
       const d = dateFromKey(k);
       const mk = k.slice(0, 7);
-      byMonth.set(mk, { key: mk, label: MONTHS[d.getUTCMonth()], production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
+      byMonth.set(mk, emptyPoint(mk, MONTHS[d.getUTCMonth()]));
       k = manilaDateKey(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 4)));
     }
     for (const p of perDay.values()) {
@@ -253,6 +278,7 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
       t.grid += p.grid;
       t.solar += p.solar;
       t.battery += p.battery;
+      t.exported += p.exported;
       t.savings += p.savings;
       t.hasData ||= p.hasData;
     }
@@ -261,10 +287,10 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
     points = [];
     // Day points (1W, 1M) are labelled with the actual date ("Oct 5"), not the weekday.
     for (let k = start; k <= end; k = manilaDateKey(addDays(dateFromKey(k), 1))) {
-      points.push(perDay.get(k) ?? { key: k, label: fmtShort(k), production: 0, consumption: null, grid: 0, solar: 0, battery: 0, savings: 0, hasData: false });
+      points.push(perDay.get(k) ?? emptyPoint(k, fmtShort(k)));
     }
   }
-  return sumPoints(points, estimatedRate, tieredRate);
+  return sumPoints(points, flags);
 }
 
 /**
@@ -289,46 +315,58 @@ export function settledDay(rows: DailyReading[] | null | undefined, dateKey: str
  * in the bars while the card still carries it). Without it the hourly table stands on its own.
  */
 export function aggregateHours(hours: HourBucket[], dateKey: string, rates: Rate[], providerId: number | null, basis?: TierBasis, settled?: DailyReading | null): Aggregate {
-  const { rate, estimated, tiered } = rateFor(rates, providerId, dateKey, basis);
+  const info = rateFor(rates, providerId, dateKey, basis);
+  const flags = noFlags();
   let points: SeriesPoint[] = hours.map((h) => {
     const production = n(h.production_kwh);
     const consumption = h.consumption_kwh == null ? null : Number(h.consumption_kwh);
+    const exported = n(h.grid_export_kwh);
     // Battery share of the hour's consumption = what the battery discharged (hours before
     // 2026-10-09 hold 0 until re-read; before that this was a hard-coded 0).
     const split = splitConsumption(consumption, n(h.grid_import_kwh), n(h.battery_discharge_kwh));
     const hh = h.hour % 12 === 0 ? 12 : h.hour % 12;
+    const hasData = h.points > 0;
+    noteFlags(flags, info, hasData, exported);
     return {
       key: String(h.hour),
       label: `${hh}${h.hour < 12 ? "AM" : "PM"}`,
       production,
       consumption,
       ...split,
-      savings: production * rate,
-      hasData: h.points > 0,
+      exported,
+      savings: savingsFor({ production, consumption, grid: n(h.grid_import_kwh), exported }, info),
+      hasData,
     };
   });
   if (settled) {
     const production = n(settled.production_kwh);
     const consumption = settled.consumption_kwh == null ? null : Number(settled.consumption_kwh);
-    const split = splitConsumption(consumption, n(settled.grid_import_kwh), n(settled.battery_discharge_kwh));
+    const gridImport = n(settled.grid_import_kwh);
+    const exported = n(settled.grid_export_kwh);
+    const split = splitConsumption(consumption, gridImport, n(settled.battery_discharge_kwh));
     const total = (f: (p: SeriesPoint) => number) => points.reduce((s, p) => s + f(p), 0);
     const factor = (target: number, sum: number) => (sum > 0 ? target / sum : 0);
     const fProduction = factor(production, total((p) => p.production));
     const fGrid = factor(split.grid, total((p) => p.grid));
     const fSolar = factor(split.solar, total((p) => p.solar));
     const fBattery = factor(split.battery, total((p) => p.battery));
+    const fExported = factor(exported, total((p) => p.exported));
     points = points.map((p) => {
       const grid = p.grid * fGrid;
       const solar = p.solar * fSolar;
       const battery = p.battery * fBattery;
       const prod = p.production * fProduction;
-      return { ...p, production: prod, grid, solar, battery, consumption: p.consumption == null ? null : grid + solar + battery, savings: prod * rate };
+      const exp = p.exported * fExported;
+      const cons = p.consumption == null ? null : grid + solar + battery;
+      return { ...p, production: prod, grid, solar, battery, exported: exp, consumption: cons, savings: savingsFor({ production: prod, consumption: cons, grid, exported: exp }, info) };
     });
-    const agg = sumPoints(points, estimated, tiered && production > 0);
+    const dayFlags = noFlags();
+    noteFlags(dayFlags, info, true, exported);
+    const agg = sumPoints(points, dayFlags);
     // days ≥ 1 keeps the chart (even with no hourly rows) instead of "the inverter did not report".
-    return { ...agg, production, consumption, ...split, savings: production * rate, days: Math.max(agg.days, 1) };
+    return { ...agg, production, consumption, ...split, exported, savings: savingsFor({ production, consumption, grid: gridImport, exported }, info), days: Math.max(agg.days, 1) };
   }
-  return sumPoints(points, estimated, tiered && points.some((p) => p.production > 0));
+  return sumPoints(points, flags);
 }
 
 /** Lifetime totals from all daily rows. */
@@ -336,20 +374,21 @@ export function lifetime(rows: DailyReading[], rates: Rate[], providerId: number
   const basis = tierBasis(rows);
   let production = 0;
   let savings = 0;
-  let estimatedRate = false;
-  let tieredRate = false;
+  const flags = noFlags();
   let first: string | null = null;
   for (const r of rows) {
     const key = manilaDateKey(r.timestamp);
     const p = n(r.production_kwh);
+    const consumption = r.consumption_kwh == null ? null : Number(r.consumption_kwh);
+    const exported = n(r.grid_export_kwh);
     if (p > 0 && !first) first = key;
-    const { rate, estimated, tiered } = rateFor(rates, providerId, key, basis);
-    estimatedRate ||= estimated && p > 0;
-    tieredRate ||= tiered && p > 0;
+    const info = rateFor(rates, providerId, key, basis);
+    const hasData = p > 0 || (consumption ?? 0) > 0;
+    if (hasData) noteFlags(flags, info, true, exported);
     production += p;
-    savings += p * rate;
+    savings += savingsFor({ production: p, consumption, grid: n(r.grid_import_kwh), exported }, info);
   }
-  return { production, savings, estimatedRate, tieredRate, since: first };
+  return { production, savings, ...flags, since: first };
 }
 
 export const todayKey = () => manilaDateKey(manilaToday());

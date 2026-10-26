@@ -57,7 +57,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         supabase.from("solar_systems").select("id,user_id,system_name,capacity_kwp,odoo_installed_date,energization_date,battery_capacity_kwh,address,status,solis_station_id,solis_plant_name,is_primary,electricity_provider_id,odoo_lead_id").order("is_primary", { ascending: false }).order("created_at"),
         supabase.from("electricity_providers").select("id,name,code").order("id"),
         // Homes are billed on the residential schedule; commercial rows (none yet) would otherwise collide on the same date.
-        supabase.from("electricity_rates").select("id,provider_id,rate,effective_date,customer_class").eq("customer_class", "residential").order("effective_date"),
+        supabase.from("electricity_rates").select("id,provider_id,rate,effective_date,customer_class,net_metering_rate").eq("customer_class", "residential").order("effective_date"),
         // Consumption levels of tiered schedules (MERALCO residential; monitoring migration 28 opened the read).
         supabase.from("electricity_rate_tiers").select("rate_id,consumption_kwh,rate_per_kwh").order("consumption_kwh"),
       ]);
@@ -73,7 +73,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         list.push({ consumption_kwh: Number(t.consumption_kwh), rate_per_kwh: Number(t.rate_per_kwh) });
         tiersByRate.set(t.rate_id, list);
       }
-      setRates(((rt.data ?? []) as Omit<Rate, "tiers">[]).map((r) => ({ ...r, rate: Number(r.rate), tiers: (tiersByRate.get(r.id) ?? []).sort((a, b) => a.consumption_kwh - b.consumption_kwh) })));
+      setRates(((rt.data ?? []) as Omit<Rate, "tiers">[]).map((r) => ({ ...r, rate: Number(r.rate), net_metering_rate: r.net_metering_rate == null ? null : Number(r.net_metering_rate), tiers: (tiersByRate.get(r.id) ?? []).sort((a, b) => a.consumption_kwh - b.consumption_kwh) })));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
