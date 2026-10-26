@@ -49,7 +49,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </nav>
         <div className="my-5 border-t border-white/20" />
         <div className="flex items-center gap-3 px-2">
-          <Link to="/account/profile" className="flex min-w-0 flex-1 items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          {/* The click bubbles to the wrapper's onNavigate so the phone drawer closes, as it does for the nav items. */}
+          <Link to="/account/profile" className="flex min-w-0 flex-1 items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-dark">{initials(name)}</span>
             <span className="truncate text-sm font-semibold text-white">{name}</span>
           </Link>
