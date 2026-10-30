@@ -14,9 +14,10 @@ export const STATUS_TONE: Record<TicketStatus, BadgeTone> = { New: "blue", "In P
 
 const PAGE_SIZE = 10;
 
-function ActionCard({ to, icon, title, description }: { to: string; icon: React.ReactNode; title: string; description: string }) {
+/* `tour` marks the card for the onboarding tour (lib/tour.tsx), which finds it by data-tour. */
+function ActionCard({ to, icon, title, description, tour }: { to: string; icon: React.ReactNode; title: string; description: string; tour?: string }) {
   return (
-    <Link to={to} className="group block rounded-xl border border-neutral-200 bg-white p-6 shadow-xs transition-shadow duration-200 hover:shadow-sm">
+    <Link to={to} data-tour={tour} className="group block rounded-xl border border-neutral-200 bg-white p-6 shadow-xs transition-shadow duration-200 hover:shadow-sm">
       <div className="flex items-start justify-between">
         <span className="text-brand-absinthe">{icon}</span>
         <ChevronRight className="h-5 w-5 text-neutral-400 transition-transform group-hover:translate-x-0.5" />
@@ -98,9 +99,9 @@ export default function SupportHubPage() {
 
       <div className="anim-fade-up">
         <div className="grid gap-5 md:grid-cols-3">
-          <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" />
-          <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" />
-          <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." />
+          <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" tour="ticket" />
+          <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" tour="pms" />
+          <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." tour="contact" />
         </div>
 
         {/* Phone: heading + Refresh on one line, the Support | PMS switch stretched across the next

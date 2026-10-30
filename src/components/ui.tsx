@@ -109,8 +109,13 @@ export function Field({
 
 /* ------------------------------------------------------------------- Cards */
 
-export function Card({ children, className, padded = true }: { children: ReactNode; className?: string; padded?: boolean }) {
-  return <div className={cx("rounded-xl border border-neutral-200 bg-white shadow-xs", padded && "p-6", className)}>{children}</div>;
+/** `tour` marks the card for the onboarding tour (lib/tour.tsx), which finds it by data-tour. */
+export function Card({ children, className, padded = true, tour }: { children: ReactNode; className?: string; padded?: boolean; tour?: string }) {
+  return (
+    <div data-tour={tour} className={cx("rounded-xl border border-neutral-200 bg-white shadow-xs", padded && "p-6", className)}>
+      {children}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ Badges */

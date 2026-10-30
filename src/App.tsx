@@ -5,6 +5,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 const DevPreviewPage = lazy(() => import("./pages/DevPreviewPage"));
 import { useAuth } from "./auth/AuthProvider";
 import { PortalProvider } from "./lib/portal";
+import { TourProvider } from "./lib/tour";
 import { AppShell } from "./layout/AppShell";
 import { Spinner } from "./components/ui";
 import LoginPage from "./pages/auth/LoginPage";
@@ -38,9 +39,11 @@ function RequireAuth() {
   if (recovering && location.pathname !== "/reset-password") return <Navigate to="/reset-password" replace />;
   return (
     <PortalProvider>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <TourProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </TourProvider>
     </PortalProvider>
   );
 }

@@ -1,20 +1,24 @@
 import { useState, type ReactNode } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Bell, Home, LifeBuoy, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
+import { Bell, Home, LifeBuoy, Lightbulb, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { usePortal } from "@/lib/portal";
+import { useTour } from "@/lib/tour";
 import { useWeather } from "@/lib/weather";
-import { cx, usePresence } from "@/components/ui";
+import { Button, cx, usePresence } from "@/components/ui";
 import { initials } from "@/lib/format";
 import { Logo } from "@/components/Logo";
+import { TourOverlay } from "@/components/tour/TourOverlay";
 
 const NOTIFICATION_COUNT = 0; // No notification source yet (see docs/integrations.md).
 
-function NavItem({ to, icon, label, badge, end }: { to: string; icon: ReactNode; label: string; badge?: number; end?: boolean }) {
+/* `tour` marks an element for the onboarding tour (lib/tour.tsx): the overlay finds it by data-tour. */
+function NavItem({ to, icon, label, badge, end, tour }: { to: string; icon: ReactNode; label: string; badge?: number; end?: boolean; tour?: string }) {
   return (
     <NavLink
       to={to}
       end={end}
+      data-tour={tour}
       className={({ isActive }) =>
         cx(
           "flex items-center gap-3 rounded-lg px-4 py-3 text-base font-semibold text-white/90 transition-colors hover:bg-white/10",
@@ -40,17 +44,17 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Logo size="xl" />
       </div>
       <nav className="mt-10 flex flex-col gap-1">
-        <NavItem to="/" end icon={<Home className="h-5 w-5" />} label="Home" />
+        <NavItem to="/" end icon={<Home className="h-5 w-5" />} label="Home" tour="nav-home" />
         <NavItem to="/notifications" icon={<Bell className="h-5 w-5" />} label="Notifications" badge={NOTIFICATION_COUNT} />
       </nav>
       <div className="mt-auto">
         <nav className="flex flex-col gap-1">
-          <NavItem to="/support" icon={<LifeBuoy className="h-5 w-5" />} label="Support" />
+          <NavItem to="/support" icon={<LifeBuoy className="h-5 w-5" />} label="Support" tour="nav-support" />
         </nav>
         <div className="my-5 border-t border-white/20" />
-        <div className="flex items-center gap-3 px-2">
+        <div className="flex items-center gap-3">
           {/* The click bubbles to the wrapper's onNavigate so the phone drawer closes, as it does for the nav items. */}
-          <Link to="/account/profile" className="flex min-w-0 flex-1 items-center gap-3">
+          <Link to="/account/profile" data-tour="profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-dark">{initials(name)}</span>
             <span className="truncate text-sm font-semibold text-white">{name}</span>
           </Link>
@@ -91,7 +95,9 @@ function WeatherChip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const drawer = usePresence(open, 200);
+  const tour = useTour();
+  // The tour keeps the drawer open while it rings a sidebar item (phones only; from lg the drawer is hidden anyway).
+  const drawer = usePresence(open || tour.wantsDrawer, 200);
   return (
     <div className="min-h-screen lg:flex">
       {/* Desktop sidebar */}
@@ -104,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile header + drawer */}
       <div className="flex items-center justify-between bg-brand-dark px-4 py-3 lg:hidden">
         <Logo size="lg" />
-        <button onClick={() => setOpen(true)} className="rounded-md p-2 text-white hover:bg-white/10" aria-label="Open menu">
+        <button onClick={() => setOpen(true)} data-tour="menu" className="rounded-md p-2 text-white hover:bg-white/10" aria-label="Open menu">
           <Menu className="h-6 w-6" />
         </button>
       </div>
@@ -122,13 +128,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">
         <div className="max-w-[1120px] px-4 py-6 sm:px-8 sm:py-8">
-          <div className="mb-6 flex items-center justify-end">
+          {/* Header row (Figma Onboarding v2): Get Started Tips beside the weather and location, on every page; right-aligned from lg. */}
+          <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 lg:justify-end">
+            <Button variant="secondary" onClick={tour.start} data-tour="get-started" className="font-semibold">
+              <Lightbulb className="h-4 w-4 text-neutral-500" /> Get Started Tips
+            </Button>
             <WeatherChip />
           </div>
           {/* Pages animate their own content below the breadcrumb and header, so those stay still. */}
           {children}
         </div>
       </main>
+
+      <TourOverlay />
     </div>
   );
 }

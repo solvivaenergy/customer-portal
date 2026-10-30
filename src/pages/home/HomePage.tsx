@@ -216,7 +216,7 @@ export default function HomePage() {
 
         {/* ---------------------------------------------------------- Hero */}
         <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
-          <Card>
+          <Card tour="savings">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-base text-neutral-600">Total savings from Solar</p>
@@ -298,7 +298,7 @@ export default function HomePage() {
         {/* --------------------------------------------------- Performance */}
         <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">Your system's performance</h2>
         <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
-          <Card>
+          <Card tour="performance">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-neutral-700">{perfHasConsumption ? "Total consumption" : "Total production"}</p>
@@ -390,7 +390,7 @@ export default function HomePage() {
               )}
             </Card>
 
-            <Card>
+            <Card tour="battery">
               {hasBattery ? (
                 <>
                   <p className="flex items-center gap-2 text-base font-semibold text-neutral-800">

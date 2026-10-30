@@ -47,13 +47,17 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     };
   }, [systems]);
 
+  // Keyed on the login's id and email, not the user object: Supabase hands out a new object on every
+  // token refresh and metadata update (the tour stores its state there), which must not reload the page.
+  const userId = user?.id;
+  const userEmail = user?.email ?? "";
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     setLoading(true);
     setError(null);
     try {
       const [p, s, pr, rt, tr] = await Promise.all([
-        supabase.from("user_profiles").select("id,full_name,phone,address,referral_code,solis_station_id,electricity_provider_id,odoo_customer_name,odoo_partner_id").eq("id", user.id).maybeSingle(),
+        supabase.from("user_profiles").select("id,full_name,phone,address,referral_code,solis_station_id,electricity_provider_id,odoo_customer_name,odoo_partner_id").eq("id", userId).maybeSingle(),
         supabase.from("solar_systems").select("id,user_id,system_name,capacity_kwp,odoo_installed_date,energization_date,battery_capacity_kwh,address,status,solis_station_id,solis_plant_name,is_primary,electricity_provider_id,odoo_lead_id").order("is_primary", { ascending: false }).order("created_at"),
         supabase.from("electricity_providers").select("id,name,code").order("id"),
         // Homes are billed on the residential schedule; commercial rows (none yet) would otherwise collide on the same date.
@@ -63,7 +67,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       ]);
       for (const r of [p, s, pr, rt]) if (r.error) throw new Error(r.error.message);
       if (tr.error) console.warn("rate tiers unavailable, using flat rates:", tr.error.message);
-      setProfile(p.data ? { ...(p.data as Omit<Profile, "email">), email: user.email ?? "" } : { id: user.id, email: user.email ?? "", full_name: null, phone: null, address: null, referral_code: null, solis_station_id: null, electricity_provider_id: null, odoo_customer_name: null, odoo_partner_id: null });
+      setProfile(p.data ? { ...(p.data as Omit<Profile, "email">), email: userEmail } : { id: userId, email: userEmail, full_name: null, phone: null, address: null, referral_code: null, solis_station_id: null, electricity_provider_id: null, odoo_customer_name: null, odoo_partner_id: null });
       const sys = ((s.data ?? []) as SolarSystem[]).filter((x) => x.status !== "decommissioned");
       setSystems(sys);
       setProviders((pr.data ?? []) as Provider[]);
@@ -79,7 +83,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId, userEmail]);
 
   useEffect(() => {
     void load();
