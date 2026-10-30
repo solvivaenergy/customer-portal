@@ -144,6 +144,15 @@ body {
   }
 }
 
+/* Charts are read, not operated: no focus box around the plot (or any layer inside it) when one is clicked. */
+.recharts-wrapper,
+.recharts-wrapper:focus,
+.recharts-wrapper *:focus,
+.recharts-surface,
+.recharts-surface:focus {
+  outline: none;
+}
+
 /* Users who asked for less motion get instant state changes (spinners keep turning). */
 @media (prefers-reduced-motion: reduce) {
   *:not(.animate-spin),

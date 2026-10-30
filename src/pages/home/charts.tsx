@@ -37,7 +37,8 @@ export function SavingsChart({ points, interval, divider }: { points: SeriesPoin
   return (
     <div className="anim-fade-in h-64 w-full">
       <ResponsiveContainer>
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        {/* accessibilityLayer off: it makes the surface focusable, and a click then draws the browser's focus box around the plot. */}
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer={false}>
           <defs>
             <linearGradient id="savingsFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={COLORS.line} stopOpacity={0.18} />
@@ -68,10 +69,11 @@ export function ConsumptionChart({ points, hasConsumption, interval, divider, xL
   return (
     <div className="anim-fade-in h-64 w-full">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: xLabel ? 18 : 0 }} barCategoryGap="30%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: xLabel ? 18 : 0 }} barCategoryGap="30%" accessibilityLayer={false}>
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
           <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -16, style: axisStyle } : undefined} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={48} tickFormatter={(v: number) => num(v)} label={{ value: "kWh", angle: -90, position: "insideLeft", style: axisStyle }} />
+          {/* Wide enough for four-digit ticks ("3,600") with the kWh caption clear of them. */}
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={66} tickFormatter={(v: number) => num(v)} label={{ value: "kWh", angle: -90, position: "insideLeft", offset: 2, style: axisStyle }} />
           <Tooltip
             cursor={{ fill: "#f9fafb" }}
             content={({ active, payload }) => {
