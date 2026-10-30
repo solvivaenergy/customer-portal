@@ -5,6 +5,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { Button, ErrorNotice, Field, Input } from "@/components/ui";
 import { AuthLayout } from "./AuthLayout";
 
+/** Figma "Log in": heading and button both read "Log in"; "Forgot password?" sits on the password label row. */
 export default function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
@@ -31,27 +32,44 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to track your solar savings and manage your system.">
+    <AuthLayout title="Log in" subtitle="Welcome back! Please enter your details.">
       <form onSubmit={submit} className="flex flex-col gap-5">
         {error && <ErrorNotice message={error} />}
-        <Field label="Email address" required>
-          <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+        <Field label="Email address">
+          <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required />
         </Field>
-        <Field label="Password" required>
+        <div>
+          <div className="mb-1.5 flex items-center justify-between gap-4">
+            <label htmlFor="login-password" className="text-sm font-medium text-neutral-700">
+              Password
+            </label>
+            <Link to="/forgot-password" className="text-sm font-semibold text-brand-blue hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <div className="relative">
-            <Input type={show ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required className="pr-11" />
-            <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600" aria-label={show ? "Hide password" : "Show password"}>
+            <Input
+              id="login-password"
+              type={show ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+              className="pr-11"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((s) => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+              aria-label={show ? "Hide password" : "Show password"}
+            >
               {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-        </Field>
-        <div className="flex items-center justify-end">
-          <Link to="/forgot-password" className="text-sm font-semibold text-brand-blue hover:underline">
-            Forgot password?
-          </Link>
         </div>
-        <Button type="submit" size="lg" full loading={busy}>
-          Sign in
+        <Button type="submit" size="lg" full loading={busy} className="mt-1">
+          Log in
         </Button>
       </form>
     </AuthLayout>

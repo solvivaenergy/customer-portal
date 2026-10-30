@@ -36,7 +36,7 @@ src/
   lib/tickets.ts             n8n ticket list / ticket + PMS intake
   lib/weather.ts             Open-Meteo chip (city guessed from the site address)
   layout/                    sidebar shell, breadcrumb
-  pages/auth/                login, forgot password, reset password (improvised; not in the mockup)
+  pages/auth/                login, forgot password, reset password (Figma "Log in" frames, revised 2026-10-23)
   pages/home/                dashboard: hero savings, performance, battery, share/celebration
   pages/support/             hub + My activities, new ticket, ticket detail, contact, PMS intro + wizard
   pages/account/             profile, system details, FAQs, terms, privacy (documents tab hidden for now)

@@ -46,10 +46,10 @@ export default function ResetPasswordPage() {
     <AuthLayout title="Set a new password" subtitle={PASSWORD_RULES}>
       <form onSubmit={submit} className="flex flex-col gap-5">
         {error && <ErrorNotice message={error} />}
-        <Field label="New password" required>
+        <Field label="New password">
           <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </Field>
-        <Field label="Confirm new password" required>
+        <Field label="Confirm new password">
           <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
         </Field>
         <Button type="submit" size="lg" full loading={busy || loading}>

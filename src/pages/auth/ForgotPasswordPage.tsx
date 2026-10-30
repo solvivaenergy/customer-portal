@@ -33,20 +33,20 @@ export default function ForgotPasswordPage() {
             If an account exists for <strong>{email}</strong>, a reset link is on its way. The link is valid for a limited time.
           </div>
           <Link to="/login" className="text-sm font-semibold text-brand-blue hover:underline">
-            Back to sign in
+            Back to log in
           </Link>
         </div>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-5">
           {error && <ErrorNotice message={error} />}
-          <Field label="Email address" required>
-            <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Field label="Email address">
+            <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required />
           </Field>
           <Button type="submit" size="lg" full loading={busy}>
             Send reset link
           </Button>
           <Link to="/login" className="text-center text-sm font-semibold text-brand-blue hover:underline">
-            Back to sign in
+            Back to log in
           </Link>
         </form>
       )}

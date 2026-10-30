@@ -13,6 +13,7 @@ const OUT = path.join(ROOT, "src/components/brand.tsx");
 // file → component name, doc comment, and an optional fill to replace with currentColor.
 const ICONS = {
   "logo-horizontal.svg": { name: "SolvivaLogoHorizontal", doc: 'Horizontal lockup: sunburst + SOLVIVA + "An AboitizPower Company". Coloured with `currentColor`.', recolor: "#FCFCFC", label: "Solviva — An AboitizPower Company" },
+  "sun-mark.svg": { name: "SolvivaSunMark", doc: "The sunburst from the lockup on its own — the large faded brand mark on the login panels (Figma \"Log in\"). Coloured with `currentColor`.", recolor: "#FCFCFC" },
   "coins.svg": { name: "CoinsIcon", doc: 'Coins with sparkles (Figma "Frame 29") — Total savings from solar.' },
   "handshake.svg": { name: "HandshakeIcon", doc: 'Handshake (Figma "Handshake 1") — Referral earnings.' },
   "support-ticket.svg": { name: "SupportTicketIcon", doc: 'Agent with headset (Figma "Frame 264") — Submit a support ticket.' },
