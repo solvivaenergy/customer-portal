@@ -72,8 +72,9 @@ export function ConsumptionChart({ points, hasConsumption, interval, divider, xL
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: xLabel ? 18 : 0 }} barCategoryGap="30%" accessibilityLayer={false}>
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
           <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -16, style: axisStyle } : undefined} />
-          {/* Wide enough for four-digit ticks ("3,600") with the kWh caption clear of them. */}
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={66} tickFormatter={(v: number) => num(v)} label={{ value: "kWh", angle: -90, position: "insideLeft", offset: 2, style: axisStyle }} />
+          {/* Wide enough for four-digit ticks ("3,600") with the kWh caption clear of them. The rotated caption is
+              centred on its x, so an offset under ~7 pushes half the glyphs outside the SVG and they get clipped. */}
+          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={66} tickFormatter={(v: number) => num(v)} label={{ value: "kWh", angle: -90, position: "insideLeft", offset: 9, style: axisStyle }} />
           <Tooltip
             cursor={{ fill: "#f9fafb" }}
             content={({ active, payload }) => {
