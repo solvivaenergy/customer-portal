@@ -100,17 +100,27 @@ function rng(seed: number) {
 
 const SHAPES = ["", "confetti-piece--round", "confetti-piece--strip"];
 
+/** Pieces per burst: a phone screen is mostly card, a desktop has far more room around the modal. */
+const BASE_COUNT = 130;
+function confettiCount() {
+  const w = typeof window === "undefined" ? 0 : window.innerWidth;
+  return w >= 1024 ? 340 : w >= 640 ? 220 : BASE_COUNT;
+}
+
 /**
  * One burst of confetti from the centre of the screen, random in every respect (direction, reach,
  * size, shape, spin, timing). The reach is measured in vw horizontally and vh vertically, so the burst
- * fills a phone screen as well as a desktop one instead of staying hidden behind the card.
+ * fills a phone screen as well as a desktop one instead of staying hidden behind the card. The first
+ * 130 pieces leave within 140 ms (the burst itself); any extra pieces on wider screens follow over the
+ * next half second, so the celebration reads fuller and lasts a little longer rather than just denser.
  */
-function confettiPieces(kind: ShareKind, seed: number, count = 130) {
+function confettiPieces(kind: ShareKind, seed: number, count = BASE_COUNT) {
   const colors = CONFETTI_COLORS[kind];
   const r = rng(seed);
-  return Array.from({ length: count }, () => {
+  return Array.from({ length: count }, (_, i) => {
     const angle = r() * Math.PI * 2;
     const reach = 12 + r() * 48; // 12–60% of the viewport in that direction
+    const delay = i < BASE_COUNT ? r() * 140 : 80 + r() * 420;
     return {
       shape: SHAPES[Math.floor(r() * SHAPES.length)],
       style: {
@@ -119,7 +129,7 @@ function confettiPieces(kind: ShareKind, seed: number, count = 130) {
         "--drop": `${(8 + r() * 28).toFixed(0)}vh`,
         "--spin": `${(r() < 0.5 ? -1 : 1) * Math.round(360 + r() * 720)}deg`,
         "--size": (0.7 + r() * 0.7).toFixed(2),
-        animationDelay: `${Math.round(r() * 140)}ms`,
+        animationDelay: `${Math.round(delay)}ms`,
         animationDuration: `${(1.4 + r() * 0.9).toFixed(2)}s`,
         background: colors[Math.floor(r() * colors.length)],
       } as CSSProperties,
@@ -129,12 +139,13 @@ function confettiPieces(kind: ShareKind, seed: number, count = 130) {
 
 export function CelebrationOverlay({ open, onClose, kind, amount, since, onShare }: { open: boolean; onClose: () => void; kind: ShareKind; amount: number; since: string | null; onShare: () => void }) {
   const { mounted, exiting } = usePresence(open, 180);
-  // A fresh random burst each time the overlay opens; the seed is fixed while it is up so re-renders don't reshuffle it.
+  // A fresh random burst each time the overlay opens, sized for the screen it opens on; the seed is
+  // fixed while it is up so re-renders don't reshuffle it.
   const seed = useRef(0);
   const wasOpen = useRef(false);
   if (open && !wasOpen.current) seed.current = Math.floor(Math.random() * 2 ** 32);
   wasOpen.current = open;
-  const pieces = useMemo(() => confettiPieces(kind, seed.current), [kind, seed.current]);
+  const pieces = useMemo(() => confettiPieces(kind, seed.current, confettiCount()), [kind, seed.current]);
   if (!mounted) return null;
   const isSavings = kind === "savings";
   return (
