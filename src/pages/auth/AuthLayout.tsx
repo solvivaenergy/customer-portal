@@ -18,10 +18,10 @@ import { PRIVACY, TERMS } from "@/content/legal";
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      {/* Phone / tablet banner */}
-      <header className="relative overflow-hidden bg-brand-chartreuse px-6 py-7 lg:hidden">
+      {/* Phone / tablet banner: the lockup sits a touch below centre; the sun mark hangs from the top-right corner and takes about a third of the width, as in the Figma frame. */}
+      <header className="relative overflow-hidden bg-brand-chartreuse px-6 pt-9 pb-6 lg:hidden">
         <Logo variant="dark" size="lg" linkTo={null} />
-        <SolvivaSunMark className="pointer-events-none absolute right-0 top-0 h-44 w-44 translate-x-[38%] -translate-y-[38%] text-brand-dark/10" />
+        <SolvivaSunMark className="pointer-events-none absolute right-0 top-0 h-64 w-64 translate-x-[35%] -translate-y-[35%] text-brand-dark/10" />
       </header>
 
       {/*
@@ -32,7 +32,8 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
       */}
       <div className="flex flex-1 flex-col lg:grid lg:min-h-screen lg:grid-cols-[3fr_2fr] lg:grid-rows-[1fr_auto_auto_1fr_auto]">
         <div className="relative hidden overflow-hidden bg-brand-chartreuse lg:col-start-2 lg:row-span-full lg:block" aria-hidden="true">
-          <SolvivaSunMark className="pointer-events-none absolute bottom-0 right-0 w-[110%] translate-x-[45%] translate-y-[45%] text-brand-dark/10" />
+          {/* Sized by viewport height so the visible quarter (~36vh) always stays below the welcome text, whatever the window size. */}
+          <SolvivaSunMark className="pointer-events-none absolute bottom-0 right-0 h-[75vh] w-[75vh] translate-x-[45%] translate-y-[55%] text-brand-dark/10" />
         </div>
 
         <div className="hidden lg:col-start-1 lg:row-start-2 lg:block lg:w-full lg:max-w-md lg:justify-self-center lg:pb-10">
