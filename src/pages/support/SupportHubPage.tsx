@@ -154,7 +154,7 @@ export default function SupportHubPage() {
                   <thead className="bg-neutral-100 text-neutral-700">
                     <tr>
                       <Th>Ticket No.</Th>
-                      <Th wide>Subject</Th>
+                      <Th wide>Category</Th>
                       <Th wide>Description</Th>
                       <Th wide>Created</Th>
                       <Th>Status</Th>
@@ -166,8 +166,11 @@ export default function SupportHubPage() {
                         <td className={cell}>
                           <RefLink to={`/support/tickets/${t.id}`}>{t.ref}</RefLink>
                         </td>
-                        <td className={cx(cell, wideCell, "text-neutral-700")}>{truncate(t.subject, 40)}</td>
-                        <td className={cx(cell, wideCell, "text-neutral-600")}>{truncate(t.description, 48) || "—"}</td>
+                        {/* Category = the ticket's first customer-facing tag (Figma table); the subject stays on the detail page. */}
+                        <td className={cx(cell, wideCell, "text-neutral-700")} title={t.categories.join(", ") || undefined}>
+                          {t.category || "—"}
+                        </td>
+                        <td className={cx(cell, wideCell, "text-neutral-600")}>{truncate(t.description || t.subject, 48) || "—"}</td>
                         <td className={cx(cell, wideCell, "text-neutral-700")}>{shortDate(t.createdAt)}</td>
                         <td className={cell}>
                           <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>

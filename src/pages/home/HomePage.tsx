@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BatteryCharging, ChevronLeft, ChevronRight, Share2, Zap } from "lucide-react";
-import { CoinsIcon, HandshakeIcon } from "@/components/icons";
+import { BatteryCharging, ChevronLeft, ChevronRight, Clock, Share2, Zap } from "lucide-react";
+import { CoinsIcon } from "@/components/icons";
 import { usePortal } from "@/lib/portal";
 import { api } from "@/lib/api";
 import { aggregateDaily, aggregateHours, fetchDailyReadings, fetchDayHours, fetchLatestFiveMinute, lifetime, periodBounds, RANGES, settledDay, shiftPeriod, todayKey, yearDivider, type Aggregate, type Period, type RangeId } from "@/lib/energy";
 import { tierBasis } from "@/lib/savings";
 import { dateFromKey, kwh, manilaDateKey, num, php, firstName, greeting, shortDate, dateTime } from "@/lib/format";
 import type { DailyReading, FiveMinuteRow, HourBucket, LiveData } from "@/lib/types";
-import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Select, Spinner, cx } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Select, Spinner, cx } from "@/components/ui";
 import { REFERRAL } from "@/content/contact";
 import { ConsumptionChart, LEGEND, SavingsChart } from "./charts";
 import { CelebrationOverlay, ShareModal, type ShareKind } from "./share";
@@ -187,6 +187,8 @@ export default function HomePage() {
   const savingsBounds = periodBounds(savings.period);
   // Ticks to skip between labels: "Oct 5"-style labels need more room than month names.
   const xInterval = (p: Period) => (p.range === "1M" ? 4 : p.range === "1D" ? 2 : 0);
+  // Axis caption under the bar chart (Figma: "Month"), by what one bar stands for.
+  const xLabel = (p: Period) => (p.range === "1D" ? "Hour" : p.range === "1W" || p.range === "1M" ? "Day" : "Month");
 
   return (
     <>
@@ -247,16 +249,10 @@ export default function HomePage() {
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               <Segmented options={RANGES} value={savings.period.range} onChange={savings.setRange} size="sm" />
             </div>
+            {/* One short line (the Figma card has none); the full method is explained in the FAQ. */}
             {savingsAgg && savingsAgg.days > 0 && (
               <p className="mt-3 text-center text-xs text-neutral-500">
-                {`Savings are your estimated ${provider?.code ?? "MERALCO"} bill without solar minus your bill with solar, plus a credit for energy sent to the grid, `}
-                {savingsAgg.tieredRate
-                  ? `at the residential rate for your monthly consumption level.`
-                  : savingsAgg.flatRate
-                    ? `at the standard residential rate until your first full month sets your consumption level.`
-                    : `at residential rates.`}
-                {savingsAgg.tieredRate && savingsAgg.flatRate ? " Months before your first full month use the standard rate." : ""}
-                {savingsAgg.estimatedRate ? " Some months use the nearest published rate." : ""}
+                Estimated at {provider?.code ?? "MERALCO"} residential rates{savingsAgg.estimatedRate ? ", some months at the nearest published rate" : ""}.
               </p>
             )}
           </Card>
@@ -269,19 +265,6 @@ export default function HomePage() {
                   <CoinsIcon className="h-8 w-8" />
                 </div>
                 <p className="mt-2 text-2xl font-semibold text-neutral-900">{life ? php(life.savings) : "—"}</p>
-                {sinceLabel && <p className="mt-1 text-xs text-neutral-500">Since {sinceLabel} · {kwh(life?.production ?? 0)} produced</p>}
-              </Card>
-            </button>
-            <button onClick={() => setCelebrate("referral")} className="text-left">
-              <Card className="transition-shadow duration-200 hover:shadow-sm">
-                <div className="flex items-start justify-between">
-                  <p className="text-base text-neutral-600">Referral earnings</p>
-                  <HandshakeIcon className="h-8 w-8" />
-                </div>
-                <p className="mt-2 text-2xl font-semibold text-neutral-900">{php(referralEarnings, { decimals: 0 })}</p>
-                <Badge tone="neutral" className="mt-2">
-                  Tracking coming soon
-                </Badge>
               </Card>
             </button>
             <div className="rounded-xl bg-brand-chartreuse p-6">
@@ -291,6 +274,11 @@ export default function HomePage() {
                 <Share2 className="h-4 w-4" /> Share code
               </Button>
               {profile?.referral_code && <p className="mt-2 text-center text-xs text-brand-dark/80">Your code: {profile.referral_code}</p>}
+            </div>
+            {/* Referral earnings have no source yet (docs/integrations.md), so this is a muted note under Refer and Earn, as in the Figma "Homepage", not a card that opens anything. */}
+            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4 text-base text-neutral-600">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-neutral-500" aria-hidden="true" />
+              <p>Tracking your referral earnings is coming soon.</p>
             </div>
           </div>
         </div>
@@ -318,7 +306,7 @@ export default function HomePage() {
                 perfAgg.days === 0 ? (
                   <EmptyState title="No data for this period" description="Your inverter did not report any data in this period." />
                 ) : (
-                  <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} />
+                  <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} xLabel={xLabel(perf.period)} />
                 )
               ) : (
                 <div className="flex h-64 items-center justify-center">

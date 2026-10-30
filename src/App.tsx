@@ -12,7 +12,6 @@ import LoginPage from "./pages/auth/LoginPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import HomePage from "./pages/home/HomePage";
-import NotificationsPage from "./pages/NotificationsPage";
 import SupportHubPage from "./pages/support/SupportHubPage";
 import NewTicketPage from "./pages/support/NewTicketPage";
 import TicketDetailPage from "./pages/support/TicketDetailPage";
@@ -67,7 +66,6 @@ export default function App() {
 
       <Route element={<RequireAuth />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/support" element={<SupportHubPage />} />
         <Route path="/support/tickets/new" element={<NewTicketPage />} />
         <Route path="/support/tickets/:id" element={<TicketDetailPage />} />

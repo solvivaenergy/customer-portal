@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Bell, Home, LifeBuoy, Lightbulb, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
+import { Home, LifeBuoy, Lightbulb, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { usePortal } from "@/lib/portal";
 import { useTour } from "@/lib/tour";
@@ -9,8 +9,6 @@ import { Button, cx, usePresence } from "@/components/ui";
 import { initials } from "@/lib/format";
 import { Logo } from "@/components/Logo";
 import { TourOverlay } from "@/components/tour/TourOverlay";
-
-const NOTIFICATION_COUNT = 0; // No notification source yet (see docs/integrations.md).
 
 /* `tour` marks an element for the onboarding tour (lib/tour.tsx): the overlay finds it by data-tour. */
 function NavItem({ to, icon, label, badge, end, tour }: { to: string; icon: ReactNode; label: string; badge?: number; end?: boolean; tour?: string }) {
@@ -43,14 +41,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-2">
         <Logo size="xl" />
       </div>
+      {/* Home and Support together at the top (Figma "Homepage"; Notifications is hidden there and has no source yet). */}
       <nav className="mt-10 flex flex-col gap-1">
         <NavItem to="/" end icon={<Home className="h-5 w-5" />} label="Home" tour="nav-home" />
-        <NavItem to="/notifications" icon={<Bell className="h-5 w-5" />} label="Notifications" badge={NOTIFICATION_COUNT} />
+        <NavItem to="/support" icon={<LifeBuoy className="h-5 w-5" />} label="Support" tour="nav-support" />
       </nav>
       <div className="mt-auto">
-        <nav className="flex flex-col gap-1">
-          <NavItem to="/support" icon={<LifeBuoy className="h-5 w-5" />} label="Support" tour="nav-support" />
-        </nav>
         <div className="my-5 border-t border-white/20" />
         <div className="flex items-center gap-3">
           {/* The click bubbles to the wrapper's onNavigate so the phone drawer closes, as it does for the nav items. */}

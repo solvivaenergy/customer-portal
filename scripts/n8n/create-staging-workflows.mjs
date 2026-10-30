@@ -1,11 +1,14 @@
 /**
- * Creates (or updates) the two STAGING n8n workflows the portal uses, cloned from the production
+ * Creates (or updates) the STAGING n8n workflows the portal uses, cloned from the production
  * ones but pointed at the odoo.sh staging build:
  *
  *   [STAGING] Portal Support Intake → Odoo   POST /webhook/staging/webflow-customer-support  (helpdesk.ticket)
- *   [STAGING] Portal Get My Tickets → Odoo   POST /webhook/staging/get-my-tickets            (helpdesk.ticket)
+ *   [STAGING] Portal Get My Tickets → Odoo   POST /webhook/staging/get-my-tickets            (helpdesk.ticket + tag names)
  *   [STAGING] Portal Get My PMS → Odoo       POST /webhook/staging/get-my-pms                (maintenance.request)
  *   [STAGING] Portal PMS Request → Odoo      POST /webhook/staging/pms-request               (maintenance.request create)
+ *   [STAGING] Portal Get My System → Odoo    POST /webhook/staging/get-my-system             (crm.lead)
+ *   [STAGING] Portal Ticket Messages → Odoo  POST /webhook/staging/get-ticket-messages       (mail.message, customer-visible)
+ *   [STAGING] Portal Ticket Reply → Odoo     POST /webhook/staging/ticket-reply              (helpdesk.ticket message_post)
  *
  * Environment values come from n8n variables at run time (nothing is hard-coded here):
  *   ODOO_SH_STAGING_URL / _DB / _USER / _KEY          staging host + JSON-RPC credentials
@@ -124,18 +127,167 @@ function buildList(prod) {
     .replace("['partner_email', '=',", "['partner_email', 'ilike',")
     .replace("'partner_name'", "'partner_name', 'ticket_ref', 'team_id', 'tag_ids'");
 
+  // tag_ids come back as ids; read the names (helpdesk.tag) and attach them as `tags` — the
+  // portal's "Category" column is the first tag.
+  const tags = clone(prod, "Odoo Search Tickets");
+  tags.name = "Odoo Read Tags";
+  tags.position = [780, 300];
+  tags.parameters.url = STAGING_JSONRPC;
+  tags.parameters.body =
+    "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 3, params: { service: 'object', method: 'execute_kw', args: [" +
+    "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'helpdesk.tag', 'search_read', " +
+    "[[ ['id', 'in', (Array.isArray($('Odoo Search Tickets').item.json.result) ? $('Odoo Search Tickets').item.json.result : []).reduce((a, t) => a.concat(t.tag_ids || []), []).filter((v, i, arr) => arr.indexOf(v) === i)] ]], " +
+    "{ fields: ['id', 'name'], limit: 200 }] } }) }}";
+
+  const attach = {
+    name: "Attach tag names",
+    type: "n8n-nodes-base.code",
+    typeVersion: 2,
+    position: [1040, 300],
+    parameters: {
+      mode: "runOnceForAllItems",
+      jsCode: String.raw`const search = $('Odoo Search Tickets').first().json;
+if (!Array.isArray(search.result)) return [{ json: { error: search.error } }];
+const names = new Map((($input.first().json.result) || []).map((t) => [t.id, t.name]));
+return [{ json: { result: search.result.map((t) => ({ ...t, tags: (t.tag_ids || []).map((id) => names.get(id)).filter(Boolean) })) } }];`,
+    },
+  };
+
   const respond = clone(prod, "Respond to Webhook");
-  respond.position = [780, 300];
+  respond.position = [1300, 300];
   // Surface Odoo errors instead of silently answering [] (the portal shows them).
   respond.parameters.responseBody = "={{ JSON.stringify($json.result ?? { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
 
   return {
     name: "[STAGING] Portal Get My Tickets → Odoo",
-    nodes: [webhook, auth, search, respond],
+    nodes: [webhook, auth, search, tags, attach, respond],
     connections: {
       Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
       "Odoo Authenticate": { main: [[{ node: "Odoo Search Tickets", type: "main", index: 0 }]] },
-      "Odoo Search Tickets": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
+      "Odoo Search Tickets": { main: [[{ node: "Odoo Read Tags", type: "main", index: 0 }]] },
+      "Odoo Read Tags": { main: [[{ node: "Attach tag names", type: "main", index: 0 }]] },
+      "Attach tag names": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
+    },
+    settings: { executionOrder: "v1" },
+  };
+}
+
+/* ------------------------------------------------------------ Ticket chatter (mail.message) */
+
+const authNode = (prodList) => {
+  const auth = clone(prodList, "Odoo Authenticate");
+  auth.position = [260, 300];
+  auth.parameters.url = STAGING_JSONRPC;
+  auth.parameters.body = "=" + JSON.stringify({ jsonrpc: "2.0", method: "call", id: 1, params: { service: "common", method: "authenticate", args: ["{{ $vars.ODOO_SH_STAGING_DB }}", "{{ $vars.ODOO_SH_STAGING_USER }}", "{{ $vars.ODOO_SH_STAGING_KEY }}", {}] } });
+  return auth;
+};
+
+/** The ticket named in the request, only if its partner_email matches the email sent — the ownership check both chatter workflows start with. */
+const checkTicketNode = (prodList) => {
+  const check = clone(prodList, "Odoo Search Tickets");
+  check.name = "Odoo Check Ticket";
+  check.position = [520, 300];
+  check.parameters.url = STAGING_JSONRPC;
+  check.parameters.body =
+    "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 2, params: { service: 'object', method: 'execute_kw', args: [" +
+    "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'helpdesk.ticket', 'search_read', " +
+    "[[ ['id', '=', Number($('Webhook').item.json.body.ticket_id) || -1], ['partner_email', 'ilike', $('Webhook').item.json.body.email || '__no_email__'] ]], " +
+    "{ fields: ['id', 'partner_id', 'partner_email'], limit: 1 }] } }) }}";
+  return check;
+};
+
+const MESSAGE_FIELDS = ["id", "body", "author_id", "email_from", "date", "message_type", "subtype_id"];
+
+/**
+ * Customer-visible chatter of one of the customer's tickets: comments and emails whose subtype is
+ * not internal (internal notes stay in Odoo). Newest first.
+ */
+function buildTicketMessages(prodList) {
+  const webhook = clone(prodList, "Webhook");
+  webhook.position = [0, 300];
+  webhook.parameters = { ...webhook.parameters, httpMethod: "POST", path: "staging/get-ticket-messages", responseMode: "responseNode" };
+
+  const read = clone(prodList, "Odoo Search Tickets");
+  read.name = "Odoo Read Messages";
+  read.position = [780, 300];
+  read.parameters.url = STAGING_JSONRPC;
+  read.parameters.body =
+    "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 3, params: { service: 'object', method: 'execute_kw', args: [" +
+    "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'mail.message', 'search_read', " +
+    "[[ ['model', '=', 'helpdesk.ticket'], ['res_id', 'in', (Array.isArray($('Odoo Check Ticket').item.json.result) ? $('Odoo Check Ticket').item.json.result : []).map((t) => t.id)], " +
+    "['message_type', 'in', ['comment', 'email']], ['is_internal', '=', false], ['subtype_id.internal', '=', false] ]], " +
+    `{ fields: ${JSON.stringify(MESSAGE_FIELDS)}, limit: 100, order: 'date desc' }] } }) }}`;
+
+  const respond = clone(prodList, "Respond to Webhook");
+  respond.position = [1040, 300];
+  respond.parameters.responseBody = "={{ JSON.stringify($json.result ?? { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
+
+  return {
+    name: "[STAGING] Portal Ticket Messages → Odoo",
+    nodes: [webhook, authNode(prodList), checkTicketNode(prodList), read, respond],
+    connections: {
+      Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
+      "Odoo Authenticate": { main: [[{ node: "Odoo Check Ticket", type: "main", index: 0 }]] },
+      "Odoo Check Ticket": { main: [[{ node: "Odoo Read Messages", type: "main", index: 0 }]] },
+      "Odoo Read Messages": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
+    },
+    settings: { executionOrder: "v1" },
+  };
+}
+
+/**
+ * Posts the customer's reply on the ticket's chatter (message_post, subtype Discussions) as the
+ * ticket's own partner, so the support team sees it where they work and followers are notified
+ * the way they are for an emailed reply.
+ */
+function buildTicketReply(prodList) {
+  const webhook = clone(prodList, "Webhook");
+  webhook.position = [0, 300];
+  webhook.parameters = { ...webhook.parameters, httpMethod: "POST", path: "staging/ticket-reply", responseMode: "responseNode" };
+
+  const build = {
+    name: "Build reply",
+    type: "n8n-nodes-base.code",
+    typeVersion: 2,
+    position: [780, 300],
+    parameters: {
+      mode: "runOnceForAllItems",
+      jsCode: String.raw`const b = $('Webhook').first().json.body || {};
+const found = (($('Odoo Check Ticket').first().json.result) || [])[0];
+if (!found) throw new Error('Ticket not found for this email');
+const text = String(b.body || '').trim();
+if (!text) throw new Error('The reply is empty');
+if (text.length > 5000) throw new Error('The reply is too long (5000 characters at most)');
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const html = '<p>' + esc(text).replace(/\r?\n/g, '<br>') + '</p>';
+// body_is_html: without it Odoo escapes the string a second time and the tags show as text.
+const kwargs = { body: html, body_is_html: true, message_type: 'comment', subtype_xmlid: 'mail.mt_comment' };
+if (found.partner_id) kwargs.author_id = found.partner_id[0];
+return [{ json: { ticket_id: found.id, kwargs } }];`,
+    },
+  };
+
+  const post = clone(prodList, "Odoo Search Tickets");
+  post.name = "Odoo Post Reply";
+  post.position = [1040, 300];
+  post.parameters.url = STAGING_JSONRPC;
+  post.parameters.body =
+    "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 4, params: { service: 'object', method: 'execute_kw', args: [" +
+    "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'helpdesk.ticket', 'message_post', [[$json.ticket_id]], $json.kwargs] } }) }}";
+
+  const respond = clone(prodList, "Respond to Webhook");
+  respond.position = [1300, 300];
+  respond.parameters.responseBody = "={{ JSON.stringify(typeof $json.result === 'number' ? { id: $json.result } : { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
+
+  return {
+    name: "[STAGING] Portal Ticket Reply → Odoo",
+    nodes: [webhook, authNode(prodList), checkTicketNode(prodList), build, post, respond],
+    connections: {
+      Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
+      "Odoo Authenticate": { main: [[{ node: "Odoo Check Ticket", type: "main", index: 0 }]] },
+      "Odoo Check Ticket": { main: [[{ node: "Build reply", type: "main", index: 0 }]] },
+      "Build reply": { main: [[{ node: "Odoo Post Reply", type: "main", index: 0 }]] },
+      "Odoo Post Reply": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
     },
     settings: { executionOrder: "v1" },
   };
@@ -363,4 +515,8 @@ await upsert(buildList(prodList));
 await upsert(buildPmsList(prodList));
 await upsert(buildPmsCreate(prodList));
 await upsert(buildSystemDetails(prodList));
-console.log(`\nwebhooks:\n  ${BASE}/webhook/staging/webflow-customer-support\n  ${BASE}/webhook/staging/get-my-tickets\n  ${BASE}/webhook/staging/get-my-pms\n  ${BASE}/webhook/staging/pms-request\n  ${BASE}/webhook/staging/get-my-system`);
+await upsert(buildTicketMessages(prodList));
+await upsert(buildTicketReply(prodList));
+console.log(
+  `\nwebhooks:\n  ${BASE}/webhook/staging/webflow-customer-support\n  ${BASE}/webhook/staging/get-my-tickets\n  ${BASE}/webhook/staging/get-my-pms\n  ${BASE}/webhook/staging/pms-request\n  ${BASE}/webhook/staging/get-my-system\n  ${BASE}/webhook/staging/get-ticket-messages\n  ${BASE}/webhook/staging/ticket-reply`,
+);

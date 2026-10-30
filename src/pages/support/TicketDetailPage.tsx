@@ -1,20 +1,61 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronDown, Inbox } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
-import { Badge, Button, Card, Collapse, EmptyState, ErrorNotice, PageHeader, Spinner, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Collapse, EmptyState, ErrorNotice, PageHeader, Spinner, Textarea, cx } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
+import { useTicketMessages } from "@/lib/useTicketMessages";
 import { dateTime, initials, relative } from "@/lib/format";
-import { CONTACT } from "@/content/contact";
+import type { TicketMessage } from "@/lib/types";
 import { STATUS_TONE } from "./SupportHubPage";
+
+const REPLY_MAX = 5000;
+
+/* One chatter entry (Figma "Help Center_Main" row pop-up): avatar, who, when, the text. Solviva's
+   replies show the address they came from, as in the mockup. */
+function MessageItem({ m, myName }: { m: TicketMessage; myName: string | null | undefined }) {
+  return (
+    <li className="flex gap-3">
+      <span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", m.staff ? "bg-brand-light text-brand-dark" : "bg-neutral-100 text-neutral-700")}>
+        {m.staff ? "SC" : m.mine ? initials(myName) : initials(m.author)}
+      </span>
+      <div className="min-w-0 text-sm">
+        <p className="font-medium text-neutral-800">
+          {m.staff ? (m.email ?? m.author) : m.author} <span className="ml-2 font-normal text-neutral-500">{relative(m.date)}</span>
+        </p>
+        <p className="mt-1 whitespace-pre-line break-words text-neutral-600">{m.body}</p>
+      </div>
+    </li>
+  );
+}
 
 export default function TicketDetailPage() {
   const { id } = useParams();
   const { profile } = usePortal();
   const { tickets, loading, error } = useTickets(profile?.email);
-  const [activityOpen, setActivityOpen] = useState(true);
   const ticket = tickets?.find((t) => String(t.id) === id);
+  const thread = useTicketMessages(profile?.email, ticket?.id ?? null, profile?.odoo_partner_id ?? null);
+  const [activityOpen, setActivityOpen] = useState(true);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const send = async (e: FormEvent) => {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body || sending) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      await thread.reply(body);
+      setDraft("");
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (loading && !tickets)
     return (
@@ -42,8 +83,8 @@ export default function TicketDetailPage() {
                   {[
                     ["Ticket no.", ticket.ref],
                     ["Date created", dateTime(ticket.createdAt)],
+                    ["Category", ticket.categories.join(", ") || "—"],
                     ["Subject", ticket.subject],
-                    ["Stage", ticket.stage],
                   ].map(([k, v]) => (
                     <div key={k} className="flex gap-4 py-3">
                       <dt className="w-28 shrink-0 text-neutral-500">{k}</dt>
@@ -65,41 +106,44 @@ export default function TicketDetailPage() {
 
               <Card>
                 <h3 className="text-lg font-semibold text-neutral-900">Communication history</h3>
-                <div className="mt-4">
-                  <Textarea placeholder="Replies from the portal are coming soon. For now, reply to the confirmation email from our support team." disabled />
-                  <div className="mt-3 flex justify-end">
-                    <Button disabled title="Replying from the portal is not available yet">
+                {/* A reply lands on the ticket's chatter in Odoo as the customer's own message, so the support team sees it where they work. */}
+                <form onSubmit={send} className="mt-4">
+                  <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={REPLY_MAX} placeholder="Write a reply to our support team…" aria-label="Reply" disabled={sending} />
+                  {sendError && (
+                    <div className="mt-3">
+                      <ErrorNotice message={`Your reply was not sent: ${sendError}`} />
+                    </div>
+                  )}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-xs text-neutral-400">{draft.length > REPLY_MAX * 0.8 ? `${draft.length} / ${REPLY_MAX}` : ""}</span>
+                    <Button type="submit" loading={sending} disabled={!draft.trim()}>
                       Send
                     </Button>
                   </div>
-                </div>
+                </form>
+
                 <button onClick={() => setActivityOpen((o) => !o)} className="mt-6 flex w-full items-center justify-between border-t border-neutral-200 pt-4 text-sm font-semibold text-neutral-700">
                   Activity
                   <ChevronDown className={`h-4 w-4 transition-transform ${activityOpen ? "rotate-180" : ""}`} />
                 </button>
                 <Collapse open={activityOpen}>
-                  <ul className="mt-4 flex flex-col gap-5">
-                    <li className="flex gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-light text-xs font-semibold text-brand-dark">SC</span>
-                      <div className="text-sm">
-                        <p className="font-medium text-neutral-800">
-                          {CONTACT.email} <span className="ml-2 font-normal text-neutral-500">{relative(ticket.createdAt)}</span>
-                        </p>
-                        <p className="mt-1 text-neutral-600">
-                          Hi {profile?.full_name?.split(" ")[0] ?? "there"}, this is to confirm that we received your {ticket.kind === "pms" ? "PMS request" : "support ticket"} {ticket.ref}. Our team will reach out to you as soon as possible. Thank you!
-                        </p>
-                      </div>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-700">{initials(profile?.full_name)}</span>
-                      <div className="text-sm">
-                        <p className="font-medium text-neutral-800">
-                          You <span className="ml-2 font-normal text-neutral-500">{relative(ticket.createdAt)}</span>
-                        </p>
-                        <p className="mt-1 whitespace-pre-line text-neutral-600">{ticket.description || ticket.subject}</p>
-                      </div>
-                    </li>
-                  </ul>
+                  {thread.error ? (
+                    <div className="mt-4">
+                      <ErrorNotice message={`Could not load the conversation: ${thread.error}`} />
+                    </div>
+                  ) : thread.loading && !thread.messages ? (
+                    <div className="flex justify-center py-8">
+                      <Spinner />
+                    </div>
+                  ) : !thread.messages?.length ? (
+                    <p className="mt-4 text-sm text-neutral-500">No messages yet. Our team's replies and your own will appear here.</p>
+                  ) : (
+                    <ul className="mt-4 flex flex-col gap-5">
+                      {thread.messages.map((m) => (
+                        <MessageItem key={m.id} m={m} myName={profile?.full_name} />
+                      ))}
+                    </ul>
+                  )}
                 </Collapse>
               </Card>
             </div>

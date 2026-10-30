@@ -128,6 +128,10 @@ export type Ticket = {
   id: number;
   ref: string; // display reference
   subject: string;
+  /** First customer-facing category (an allow-listed Odoo tag, content/ticketCategories.ts) — the Figma table's "Category"; "" when none. */
+  category: string;
+  /** All customer-facing categories of the ticket, in Odoo's tag order. Internal tags never appear here. */
+  categories: string[];
   descriptionHtml: string;
   description: string; // plain text
   stage: string; // raw Odoo stage name
@@ -135,4 +139,15 @@ export type Ticket = {
   priority: string;
   createdAt: string; // ISO
   kind: "support" | "pms";
+};
+
+/** One entry of a ticket's chatter (mail.message), customer-visible only: internal notes never reach the portal. */
+export type TicketMessage = {
+  id: number;
+  body: string; // plain text, quoted replies removed
+  author: string; // "You" for the customer's own messages
+  email: string | null;
+  date: string; // ISO
+  mine: boolean;
+  staff: boolean; // sent by Solviva (Customer Care / an @solvivaenergy.com address)
 };

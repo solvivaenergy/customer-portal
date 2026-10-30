@@ -144,7 +144,7 @@ export function TourOverlay() {
   const box = boxes[0] ?? null;
   const stageKey = stage.kind === "tip" ? `tip-${stage.index}` : stage.kind;
   // Phones pin the tip card to the bottom, or to the top when the ringed element is in the lower
-  // half (Support and the profile link sit at the foot of the drawer).
+  // half (the profile link sits at the foot of the drawer).
   const cardAtTop = phone && !!box && box.top + box.height / 2 > win.h / 2;
 
   // Card size, for placing it (desktop) and for keeping it on screen.

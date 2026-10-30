@@ -62,14 +62,15 @@ export function SavingsChart({ points, interval, divider }: { points: SeriesPoin
   );
 }
 
-export function ConsumptionChart({ points, hasConsumption, interval, divider }: { points: SeriesPoint[]; hasConsumption: boolean; interval?: number; divider?: YearDivider | null }) {
+/** `xLabel` names the x-axis under the ticks ("Month" in the Figma "Homepage"; the Home page passes Hour / Day / Month by range). */
+export function ConsumptionChart({ points, hasConsumption, interval, divider, xLabel }: { points: SeriesPoint[]; hasConsumption: boolean; interval?: number; divider?: YearDivider | null; xLabel?: string }) {
   const data = useMemo(() => points.map((p) => ({ ...p, grid: round1(p.grid), solar: round1(p.solar), battery: round1(p.battery), production: round1(p.production) })), [points]);
   return (
     <div className="anim-fade-in h-64 w-full">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: xLabel ? 18 : 0 }} barCategoryGap="30%">
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
-          <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} />
+          <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -16, style: axisStyle } : undefined} />
           <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={48} tickFormatter={(v: number) => num(v)} label={{ value: "kWh", angle: -90, position: "insideLeft", style: axisStyle }} />
           <Tooltip
             cursor={{ fill: "#f9fafb" }}

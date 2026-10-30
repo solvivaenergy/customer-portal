@@ -54,11 +54,11 @@ function TourDemo({ initial }: { initial: TourStage }) {
         <a data-tour="nav-home" className="flex items-center gap-3 rounded-lg bg-white/15 px-4 py-3 text-base font-semibold">
           <Home className="h-5 w-5" /> Home
         </a>
-      </nav>
-      <div className="mt-auto">
         <a data-tour="nav-support" className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-semibold text-white/90">
           <LifeBuoy className="h-5 w-5" /> Support
         </a>
+      </nav>
+      <div className="mt-auto">
         <div className="my-5 border-t border-white/20" />
         <a data-tour="profile" className="flex items-center gap-3 rounded-lg px-2 py-1">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-light text-sm font-semibold text-brand-dark">CC</span>
@@ -322,7 +322,7 @@ export default function DevPreviewPage() {
         </Card>
         <Card>
           <p className="mb-4 text-sm font-semibold text-neutral-700">Consumption — 1Y with year divider</p>
-          <ConsumptionChart points={SAMPLE} hasConsumption divider={divider} />
+          <ConsumptionChart points={SAMPLE} hasConsumption divider={divider} xLabel="Month" />
         </Card>
       </div>
     </div>
