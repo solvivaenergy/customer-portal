@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { env } from "./env";
 import { useAuth } from "@/auth/AuthProvider";
 import { usePortal } from "./portal";
 import { firstName } from "./format";
@@ -36,9 +37,19 @@ export const TOUR_STEPS: TourStep[] = [
   { id: "savings", route: "/", title: "Watch your savings grow", body: "This is how much you’ve saved since your system was installed. It goes up every day, so check back often.", placement: "right" },
   { id: "performance", route: "/", title: "See where your power comes from", body: "Track how much your panels generated, how much you drew from the grid, and how much came from your battery. Switch views between day, month, or year.", placement: "right" },
   { id: "battery", route: "/", title: "Know your battery’s charge", body: "See whether your battery is charging or in use, and how much backup power is left.", placement: "left" },
-  { id: "nav-support", route: "/", title: "Need help? Start here", body: "Go to Support to submit a ticket or book a preventive maintenance service (PMS) visit.", placement: "right", drawer: true },
+  {
+    id: "nav-support",
+    route: "/",
+    title: "Need help? Start here",
+    body: env.pmsEnabled ? "Go to Support to submit a ticket or book a preventive maintenance service (PMS) visit." : "Go to Support to submit a ticket or reach our team directly.",
+    placement: "right",
+    drawer: true,
+  },
   { id: "ticket", route: "/support", title: "Got a concern?", body: "Create a ticket here and our team will get back to you as soon as possible.", placement: "bottom" },
-  { id: "pms", route: "/support", title: "Book your PMS", body: "Request a schedule for your Preventive Maintenance Service (PMS) so your system keeps running at its best.", placement: "bottom" },
+  // While PMS is switched off (env.pmsEnabled) the card reads "Coming soon", so the tip says so too.
+  env.pmsEnabled
+    ? { id: "pms", route: "/support", title: "Book your PMS", body: "Request a schedule for your Preventive Maintenance Service (PMS) so your system keeps running at its best.", placement: "bottom" }
+    : { id: "pms", route: "/support", title: "PMS booking is coming soon", body: "Soon you’ll be able to request a Preventive Maintenance Service (PMS) visit right here. Until then, our team can arrange one through Contact support.", placement: "bottom" },
   { id: "contact", route: "/support", title: "Prefer to talk to someone?", body: "Find Solviva’s phone number and email here so you can reach the team directly.", placement: "bottom" },
   { id: "profile", route: "/support", title: "Your account, your system", body: "View your account info and system details here.", placement: "right", drawer: true },
 ];

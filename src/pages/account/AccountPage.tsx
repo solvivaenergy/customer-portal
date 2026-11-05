@@ -5,6 +5,7 @@ import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Collapse, ErrorNotice, Input, Modal, PageHeader, Select, Tabs } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
 import { useAuth } from "@/auth/AuthProvider";
+import { env } from "@/lib/env";
 import { longDate, num } from "@/lib/format";
 import { FAQ_CATEGORIES, FAQS, type FaqBlock } from "@/content/faqs";
 import { PRIVACY, TERMS, type LegalLink } from "@/content/legal";
@@ -86,7 +87,7 @@ function ProfileTab() {
 
   return (
     <form onSubmit={save}>
-      <Section title="Profile" subtitle="Update your account details here. These details pre-fill your PMS requests and support tickets.">
+      <Section title="Profile" subtitle={`Update your account details here. These details pre-fill your ${env.pmsEnabled ? "PMS requests and " : ""}support tickets.`}>
         {error && (
           <div className="pt-4">
             <ErrorNotice message={error} />

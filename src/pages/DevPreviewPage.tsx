@@ -7,6 +7,10 @@ import { yearDivider, type SeriesPoint } from "@/lib/energy";
 import { ConsumptionChart, SavingsChart } from "./home/charts";
 import { CelebrationOverlay } from "./home/share";
 import { PmsSteps } from "./support/PmsRequestPage";
+import { SupportActionCards } from "./support/SupportHubPage";
+import { TicketDetailsCard } from "./support/TicketDetailPage";
+import { stripHtml } from "@/lib/format";
+import type { Ticket } from "@/lib/types";
 import { HighlightNote, TipCard, WelcomeCard } from "@/components/tour/TourCards";
 import { TourOverlay } from "@/components/tour/TourOverlay";
 import { TOUR_STEPS, TourContext, type TourStage, type TourState } from "@/lib/tour";
@@ -21,6 +25,9 @@ import { Button } from "@/components/ui";
  * `?screen=tour-demo&stage=welcome|tip-0…tip-8|no-problem|all-set` runs the real overlay over a
  * stand-in page that carries every data-tour element (all on one page, no routing), driven by local
  * state instead of the login — Next/Back/×/Got it work as in the portal.
+ * `?screen=ticket-detail` shows the Support cards (PMS as "Coming soon") and the "Ticket details" card
+ * at its real 400px width for two descriptions as Odoo stores them: a form ticket (<br> lines) and an
+ * emailed reply with quoted history.
  */
 function parseStage(raw: string | null): TourStage {
   if (!raw || raw === "idle") return { kind: "idle" };
@@ -259,6 +266,29 @@ function MobilePieces() {
     </div>
   );
 }
+/* Descriptions as odoo.sh staging returned them on 2026-11-05 (tickets 6243 and 4284), names changed. */
+const FORM_TICKET_HTML =
+  "<p>Full Name          : Abigail Almendrala<br><br>Email              : axalmendrala@yahoo.com<br><br>Plant Number       : <br><br>Phone              : <br><br>Service Type       : General Inquiry<br><br>Concern Name       : General Inquiry<br><br>Concern Description: Test Test Test Test Test Test Test Test Test Test Test<br><br>Timestamp          : 11/3/2026 15:21:03</p>";
+const EMAIL_TICKET_HTML =
+  '<div dir="auto">Hello,</div><div dir="auto"><br></div><div dir="auto">Can this be scheduled on Saturday morning? Our gate code is https://www.solvivaenergy.com/a-very-long-link-that-must-not-push-the-card-wider-than-the-page</div><div dir="auto"><br></div><div dir="auto">Regards,</div><div dir="auto">Dang</div><div dir="auto"><br><div dir="auto" data-o-mail-quote="1"><div dir="ltr" data-o-mail-quote="1">On Tue, Jun 23, 2026 at 2:55 PM After sales Tech Support &lt;<a href="mailto:tech.support@solvivaenergy.com" data-o-mail-quote="1">tech.support@solvivaenergy.com</a>&gt; wrote:<br data-o-mail-quote="1"></div><blockquote data-o-mail-quote="1" data-o-mail-quote-node="1"><p>Hi Dang Alcantara,</p><p>Please find attached your PMS Cost Proposal.</p></blockquote></div></div>\r\n';
+const SAMPLE_TICKETS: Ticket[] = [
+  { id: 6243, ref: "#6243", subject: "Abigail Almendrala Technical Ticket", category: "", categories: [], descriptionHtml: FORM_TICKET_HTML, description: stripHtml(FORM_TICKET_HTML), stage: "In Progress", status: "In Progress", priority: "0", createdAt: "2026-11-03T07:21:04Z", kind: "support" },
+  { id: 4284, ref: "#4284", subject: "Re: Your PMS Cost Proposal — Dang Alcantara <dang.alcantara@example.com>", category: "PM service", categories: ["PM service"], descriptionHtml: EMAIL_TICKET_HTML, description: stripHtml(EMAIL_TICKET_HTML), stage: "Resolved", status: "Resolved", priority: "0", createdAt: "2026-06-24T06:49:00Z", kind: "pms" },
+];
+
+function TicketDetailPieces() {
+  return (
+    <div className="flex max-w-[1120px] flex-col gap-8 p-8">
+      <SupportActionCards />
+      <div className="grid gap-6 lg:grid-cols-[400px_400px]">
+        {SAMPLE_TICKETS.map((t) => (
+          <TicketDetailsCard key={t.id} ticket={t} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const MONTHS = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 const SAMPLE: SeriesPoint[] = MONTHS.map((label, i) => {
   const key = i < 2 ? `2025-${11 + i}` : `2026-${String(i - 1).padStart(2, "0")}`;
@@ -275,6 +305,7 @@ export default function DevPreviewPage() {
     return <CelebrationOverlay open onClose={() => undefined} kind={kind} amount={kind === "savings" ? 83204.21 : 10000} since="January 2025" onShare={() => undefined} />;
   }
   if (screen === "mobile") return <MobilePieces />;
+  if (screen === "ticket-detail") return <TicketDetailPieces />;
   if (screen === "tour") return <TourPieces />;
   if (screen === "tour-demo") return <TourDemo initial={parseStage(params.get("stage"))} />;
   return (

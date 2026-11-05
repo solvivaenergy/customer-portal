@@ -7,7 +7,7 @@ import { usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
 import { useTicketMessages } from "@/lib/useTicketMessages";
 import { dateTime, initials, relative } from "@/lib/format";
-import type { TicketMessage } from "@/lib/types";
+import type { Ticket, TicketMessage } from "@/lib/types";
 import { STATUS_TONE } from "./SupportHubPage";
 
 const REPLY_MAX = 5000;
@@ -24,9 +24,47 @@ function MessageItem({ m, myName }: { m: TicketMessage; myName: string | null | 
         <p className="font-medium text-neutral-800">
           {m.staff ? (m.email ?? m.author) : m.author} <span className="ml-2 font-normal text-neutral-500">{relative(m.date)}</span>
         </p>
-        <p className="mt-1 whitespace-pre-line break-words text-neutral-600">{m.body}</p>
+        <p className="mt-1 whitespace-pre-line wrap-anywhere text-neutral-600">{m.body}</p>
       </div>
     </li>
+  );
+}
+
+/**
+ * The "Ticket details" card. Values take the rest of the row and break anywhere (emails and links in
+ * a subject would otherwise push the card wider than the page). The description gets its own block:
+ * label above, text across the card, line breaks as Odoo has them — an emailed ticket can run to
+ * several paragraphs and read badly squeezed beside a label.
+ * Exported for the dev preview (/dev/preview?screen=ticket-detail), which renders it with sample tickets.
+ */
+export function TicketDetailsCard({ ticket }: { ticket: Ticket }) {
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-neutral-900">Ticket details</h3>
+      <dl className="mt-4 divide-y divide-neutral-200 text-sm">
+        {[
+          ["Ticket no.", ticket.ref],
+          ["Date created", dateTime(ticket.createdAt)],
+          ["Category", ticket.categories.join(", ") || "—"],
+          ["Subject", ticket.subject],
+        ].map(([k, v]) => (
+          <div key={k} className="flex gap-4 py-3">
+            <dt className="w-28 shrink-0 text-neutral-500">{k}</dt>
+            <dd className="min-w-0 flex-1 wrap-anywhere text-neutral-800">{v}</dd>
+          </div>
+        ))}
+        <div className="py-3">
+          <dt className="text-neutral-500">Description</dt>
+          <dd className="mt-1.5 whitespace-pre-line wrap-anywhere text-neutral-800">{ticket.description || "—"}</dd>
+        </div>
+        <div className="flex gap-4 py-3">
+          <dt className="w-28 shrink-0 text-neutral-500">Status</dt>
+          <dd>
+            <Badge tone={STATUS_TONE[ticket.status]}>{ticket.status}</Badge>
+          </dd>
+        </div>
+      </dl>
+    </Card>
   );
 }
 
@@ -76,35 +114,11 @@ export default function TicketDetailPage() {
         ) : (
           <>
             <PageHeader title={ticket.kind === "pms" ? "PMS request" : "Support ticket"} subtitle={ticket.subject} />
-            <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
-              <Card>
-                <h3 className="text-lg font-semibold text-neutral-900">Ticket details</h3>
-                <dl className="mt-4 divide-y divide-neutral-200 text-sm">
-                  {[
-                    ["Ticket no.", ticket.ref],
-                    ["Date created", dateTime(ticket.createdAt)],
-                    ["Category", ticket.categories.join(", ") || "—"],
-                    ["Subject", ticket.subject],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex gap-4 py-3">
-                      <dt className="w-28 shrink-0 text-neutral-500">{k}</dt>
-                      <dd className="text-neutral-800">{v}</dd>
-                    </div>
-                  ))}
-                  <div className="flex gap-4 py-3">
-                    <dt className="w-28 shrink-0 text-neutral-500">Description</dt>
-                    <dd className="whitespace-pre-line text-neutral-800">{ticket.description || "—"}</dd>
-                  </div>
-                  <div className="flex gap-4 py-3">
-                    <dt className="w-28 shrink-0 text-neutral-500">Status</dt>
-                    <dd>
-                      <Badge tone={STATUS_TONE[ticket.status]}>{ticket.status}</Badge>
-                    </dd>
-                  </div>
-                </dl>
-              </Card>
+            {/* min-w-0 on the grid: the two cards must shrink with the page instead of stretching it. */}
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+              <TicketDetailsCard ticket={ticket} />
 
-              <Card>
+              <Card className="min-w-0">
                 <h3 className="text-lg font-semibold text-neutral-900">Communication history</h3>
                 {/* A reply lands on the ticket's chatter in Odoo as the customer's own message, so the support team sees it where they work. */}
                 <form onSubmit={send} className="mt-4">

@@ -1,7 +1,9 @@
-/** Contact details shown on Support → Contact support. Source: the Figma mockup (to be confirmed by CX). */
+/**
+ * Contact details shown on Support → Contact support. Source: the Figma mockup (to be confirmed by CX).
+ * The non-technical hotline (0917 802 8948) was removed on 2026-11-05 at Alden's request; email covers it.
+ */
 export const CONTACT = {
   hotlineHours: "Tuesday – Saturday, 8:00 AM to 5:00 PM",
-  nonTechnical: { label: "Non-technical concerns", phone: "0917 802 8948", tel: "+639178028948" },
   technical: { label: "Technical concerns", phone: "0917 841 2254", tel: "+639178412254" },
   email: "customer@solvivaenergy.com",
   address: "31/F, RCBC Plaza, Yuchengco Tower, 6819 Ayala Ave, Bel-Air, Makati City, 1200 Metro Manila",

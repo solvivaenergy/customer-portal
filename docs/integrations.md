@@ -17,6 +17,7 @@
 | My activities (tickets) | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-tickets` `{email}` → Odoo `helpdesk.ticket` `search_read` on `partner_email` | **Staging** workflow (`…/webhook/staging`, see below) returns name, description, stage, priority, create_date, `ticket_ref`, `team_id`, `tag_ids`; the portal shows `#<ticket_ref>` and treats the "PMS" team/subject as a PMS request. The **production** workflow (`…/webhook`) returns no `ticket_ref` and, as of 2026-10-12, always answers `[]`: its "Odoo Authenticate" body lacks the `=` expression prefix, so the `{{ $vars }}` placeholders are sent literally and authentication fails (one-character fix in n8n). |
 | Ticket status badge | Odoo stage name → New / In Progress / Resolved / Cancelled (keyword mapping in `lib/tickets.ts`) | Staging stages seen: "New". Confirm the full list with CX. |
 | Submit a ticket | n8n `POST {VITE_N8N_WEBHOOK_URL}/webflow-customer-support` with the Webflow form field names and header `X-Submission-Source: customer-portal` (skips reCAPTCHA) → Odoo webhook creates the ticket | Technical vs general path chosen by the concern type (same list as the mobile app / website). Attachments not supported. Gated by `VITE_ENABLE_SUBMISSIONS`. The demo build and local dev use the **staging** workflow → odoo.sh staging; the production workflow also serves the website's forms and writes to production Odoo. |
+| Request PMS switch | `VITE_ENABLE_PMS` (build-time; `false` everywhere since 2026-11-05 — Alden's call to turn PMS off until the intake is agreed) | Off: the Support hub card reads "Coming soon" (not a link), the Support \| PMS switch under My activities is gone, `/support/pms*` goes back to `/support`, the tour's PMS tip says it is coming, and neither `get-my-pms` nor `pms-request` is called. On: everything below as built. Turn it on per environment with the repository variables `VITE_ENABLE_PMS` (demo) / `VITE_ENABLE_PMS_PRODUCTION` (production), or `VITE_ENABLE_PMS=true` in `.env.local`. |
 | My activities → PMS tab | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-pms` `{email, partner_id, lead_ids}` → Odoo **Maintenance app** `maintenance.request` (`x_pms_email ilike` / `x_pms_partner_id` / `x_pms_crm_lead_id`) | Since 2026-10-12. Shows the Maintenance stage (New Request, Proposal Sent, Report Validation, Done…) and scheduled visit. Requests After Sales created by hand carry no email/partner/lead, so they stay invisible until "Client (Partner)" is set on them in Odoo. |
 | Request PMS | n8n `POST {VITE_N8N_WEBHOOK_URL}/pms-request` → creates a `maintenance.request` with the PMS questionnaire app's field mapping (`x_pms_*`, `schedule_date` from preferred date + slot, partner/lead from the login) | Same rule as the questionnaire: preferred date at least 10 days out. Gated by `VITE_ENABLE_SUBMISSIONS`. Staging only for now; the production equivalent would be the `pms` Render service's `/pms/api/submit` or a production copy of this workflow. |
 
@@ -63,7 +64,8 @@ Portal selection: repository variable `VITE_N8N_WEBHOOK_URL` = `…/webhook/stag
 | Documents | — | No source (Odoo attachments vs Drive undecided); the tab is hidden (`SHOW_DOCUMENTS` in `AccountPage.tsx`) until one exists. |
 | FAQs | `src/content/faqs.ts` | Generated from the website FAQ (`node scripts/sync-faqs.mjs` reads solvivaenergy.com/faq and its category pages). Marketing edits the copy on the website; re-run the script to pick it up. |
 | Terms and Conditions, Privacy Policy | `src/content/legal.ts` | Link out to solvivaenergy.com (the site sends `X-Frame-Options: SAMEORIGIN`, so it cannot be embedded). |
-| Contact details, PMS copy | `src/content/*` | Placeholder/mockup copy; owners to confirm. |
+| Contact details, PMS copy | `src/content/*` | Placeholder/mockup copy; owners to confirm. The non-technical hotline (0917 802 8948) was removed on 2026-11-05 at Alden's request: Contact support lists the technical hotline, the email, the address and office hours. |
+| Ticket description text | `stripHtml` in `src/lib/format.ts` (also used for chatter messages and PMS descriptions) | Since 2026-11-05 paragraphs and `<br>`s become line breaks (the form tickets' "Full Name : … / Email : …" lines) and the quoted history a mail client appends to a reply (`data-o-mail-quote`, `blockquote`) is dropped unless it is all there is. The detail card shows it label-above with line breaks kept and long tokens (links, emails) wrapped; the table shows one line. |
 
 ## Dev proxy
 
@@ -72,9 +74,24 @@ Portal selection: repository variable `VITE_N8N_WEBHOOK_URL` = `…/webhook/stag
 already allows `http://localhost:5173`, so the proxy is optional for it; n8n webhooks do not send CORS
 headers for arbitrary origins, so the proxy (or a server-side relay) is required there.
 
+## Production hosting (2026-11-05)
+
+https://www.solvivaenergy.com/mysolviva is a Cloudflare Worker (`customer-portal`, routes
+`www.solvivaenergy.com/mysolviva*` and the apex → www) carrying the build as static assets; see the README's
+Environments section for the build defaults, the deploy workflow and the token it needs. Done for that
+origin: `ALLOWED_ORIGINS` in the monitoring API (`api/main.py`, deployed from the monitoring repo's `main`),
+Supabase Auth redirect allow-list entry `https://www.solvivaenergy.com/mysolviva/**`. The production site
+uses the **staging** n8n workflows (odoo.sh staging) until production copies exist, so tickets submitted
+there land on staging Odoo, which odoo.sh rebuilds from production about monthly.
+
 ## Before go-live (not done)
 
-- Staging Supabase project + seed; Cloudflare Pages + DNS; `ALLOWED_ORIGINS` on the monitoring API.
-- Supabase Auth: custom SMTP (SES), branded templates, Site URL and redirect URLs for the portal domains.
+- A Cloudflare API token with Workers write access as the repository secret `CLOUDFLARE_API_TOKEN`
+  (the shared read token cannot deploy); the first production deploy happens on the next push after that.
+- Production copies of the portal n8n workflows (tickets, messages, reply, system; PMS when switched
+  back on) aimed at production Odoo, verifying the Supabase JWT instead of trusting the email the
+  browser sends; then set `VITE_N8N_WEBHOOK_URL_PRODUCTION` to `…/webhook`.
+- Staging Supabase project + seed.
+- Supabase Auth: custom SMTP (SES), branded templates, Site URL; the demo's reset-password redirect URL.
 - Account clean-up and welcome-kit mailing (current logins are internal testers).
-- n8n: return `ticket_ref`/`team_id`/`tag_ids`; a PMS intake that creates the agreed Odoo record; a reply endpoint if in-portal replies are wanted.
+- n8n production: return `ticket_ref`/`team_id`/`tag_ids`; a PMS intake that creates the agreed Odoo record.

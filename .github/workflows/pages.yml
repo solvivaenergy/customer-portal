@@ -35,6 +35,8 @@ jobs:
           VITE_N8N_WEBHOOK_URL: ${{ vars.VITE_N8N_WEBHOOK_URL || 'https://solviva.app.n8n.cloud/webhook' }}
           # Keep ticket/PMS submissions off on the demo build; flip to "true" when test tickets in Odoo are wanted.
           VITE_ENABLE_SUBMISSIONS: ${{ vars.VITE_ENABLE_SUBMISSIONS || 'false' }}
+          # Request PMS is switched off (the card reads "Coming soon") until the PMS intake is agreed.
+          VITE_ENABLE_PMS: ${{ vars.VITE_ENABLE_PMS || 'false' }}
         run: |
           npm run build
           # GitHub Pages serves 404.html for unknown paths: hand the SPA its own index so deep links work.

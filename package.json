@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:production": "node scripts/build-production.mjs",
+    "deploy:production": "node scripts/build-production.mjs --deploy",
     "preview": "vite preview",
     "typecheck": "tsc -b"
   },
@@ -26,6 +28,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.9.3",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "wrangler": "^4.157.0"
   }
 }

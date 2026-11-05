@@ -94,12 +94,36 @@ export function greeting(): string {
   return "Good evening";
 }
 
-/** Strip HTML (Odoo descriptions are HTML). */
+/* Text of an HTML fragment with its layout kept as line breaks: <br> and the end of every block become "\n". */
+function textWithBreaks(root: HTMLElement): string {
+  root.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+  root.querySelectorAll("p, div, li, tr, blockquote, h1, h2, h3, h4, h5, h6").forEach((el) => el.append("\n"));
+  return (root.textContent ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/ /g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Plain text of Odoo HTML (ticket and PMS descriptions, chatter messages). Paragraphs and <br>s stay as
+ * line breaks, so a form ticket's "Full Name : … / Email : …" lines keep their lines. The quoted history a
+ * mail client appends to a reply (Odoo marks it with data-o-mail-quote) is dropped, unless it is all
+ * there is. Images, styles and scripts go.
+ */
 export function stripHtml(html: string | null | undefined): string {
   if (!html) return "";
   const doc = new DOMParser().parseFromString(html, "text/html");
-  return (doc.body.textContent ?? "").replace(/\s+\n/g, "\n").trim();
+  doc.querySelectorAll("style, script, img").forEach((el) => el.remove());
+  const own = doc.body.cloneNode(true) as HTMLElement;
+  own.querySelectorAll("[data-o-mail-quote], [data-o-mail-quote-node], blockquote, .o_mail_quote").forEach((el) => el.remove());
+  return textWithBreaks(own) || textWithBreaks(doc.body);
 }
+
+/** Collapse line breaks and runs of spaces, for table cells and previews. */
+export const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
 
 export function truncate(s: string, n = 60) {
   return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;

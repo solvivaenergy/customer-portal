@@ -17,4 +17,9 @@ export const env = {
   n8nWebhookUrl: (import.meta.env.VITE_N8N_WEBHOOK_URL as string | undefined) ?? "/api/n8n",
   /** When false, Support forms succeed locally without posting to n8n/Odoo. */
   submissionsEnabled: (import.meta.env.VITE_ENABLE_SUBMISSIONS as string | undefined) === "true",
+  /**
+   * Request PMS (intro, wizard, PMS tab under My activities, /support/pms routes). Off since 2026-11-05:
+   * the Support hub shows the card as "Coming soon" and the PMS webhooks are never called.
+   */
+  pmsEnabled: (import.meta.env.VITE_ENABLE_PMS as string | undefined) === "true",
 };

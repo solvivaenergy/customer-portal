@@ -5,13 +5,16 @@ import type { PmsRecord, Profile, SolarSystem } from "./types";
 const cache = new Map<string, { at: number; rows: PmsRecord[] }>();
 const TTL_MS = 60_000;
 
-/** The signed-in customer's Maintenance-app PMS requests (matched by email, Odoo partner id or lead ids). */
-export function useMyPms(profile: Profile | null, systems: SolarSystem[]) {
+/**
+ * The signed-in customer's Maintenance-app PMS requests (matched by email, Odoo partner id or lead ids).
+ * With `enabled` false (PMS switched off, env.pmsEnabled) nothing is fetched and `pms` stays null.
+ */
+export function useMyPms(profile: Profile | null, systems: SolarSystem[], enabled = true) {
   const key = useMemo(() => {
-    if (!profile) return null;
+    if (!profile || !enabled) return null;
     const leadIds = systems.map((s) => s.odoo_lead_id).filter((x): x is number => typeof x === "number");
     return JSON.stringify({ email: profile.email, partnerId: profile.odoo_partner_id ?? null, leadIds });
-  }, [profile, systems]);
+  }, [profile, systems, enabled]);
   const [rows, setRows] = useState<PmsRecord[] | null>(() => (key && cache.get(key)?.rows) || null);
   const [loading, setLoading] = useState(!rows);
   const [error, setError] = useState<string | null>(null);

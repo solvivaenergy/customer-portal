@@ -79,22 +79,8 @@ function unwrap<T>(json: unknown, what: string): T[] {
   return json as T[];
 }
 
-/**
- * Plain text of a chatter message: the quoted history a mail client appends is dropped (Odoo marks it
- * with data-o-mail-quote), images and styles go, line breaks and paragraphs are kept.
- */
-export function messageText(html: string | false): string {
-  if (!html) return "";
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  doc.querySelectorAll("[data-o-mail-quote], [data-o-mail-quote-node], blockquote, style, script, img, .o_mail_quote").forEach((el) => el.remove());
-  doc.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
-  doc.querySelectorAll("p, div, li, tr, h1, h2, h3, h4, h5, h6").forEach((el) => el.append("\n"));
-  return (doc.body.textContent ?? "")
-    .replace(/[ \t ]+\n/g, "\n")
-    .replace(/\n[ \t ]+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
+/** Plain text of a chatter message: quoted history dropped, line breaks kept (same rules as ticket descriptions). */
+export const messageText = (html: string | false): string => stripHtml(html || "");
 
 const addressOf = (from: string | false) => {
   const s = String(from || "");

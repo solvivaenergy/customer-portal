@@ -1,0 +1,42 @@
+# Production hosting: https://www.solvivaenergy.com/mysolviva
+#
+# The website (Webflow) sits behind Solviva's Cloudflare zone, so a path on it can only be served by a
+# Worker route on that zone — the same way /calculator (calculator-proxy), /pms (pmsrouting) and
+# /prioritybooking are served. This Worker carries the Vite build (dist/, built with BASE_PATH=/mysolviva/)
+# as static assets; worker/index.js maps /mysolviva/* onto them and sends the apex host to www.
+#
+#   node scripts/build-production.mjs --deploy    (or: npm run deploy:production)
+#
+# needs CLOUDFLARE_API_TOKEN (Workers Scripts: Edit + Workers Routes: Edit on solvivaenergy.com) and
+# CLOUDFLARE_ACCOUNT_ID in the environment; .github/workflows/production.yml does this on every push to main.
+name = "customer-portal"
+main = "worker/index.js"
+compatibility_date = "2026-10-01"
+
+# Never expose the app on a *.workers.dev host: every service (Supabase redirects, monitoring API CORS)
+# is configured for www.solvivaenergy.com only.
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+# Unknown paths get index.html (React Router); the Worker runs first to strip the /mysolviva prefix.
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[[routes]]
+pattern = "www.solvivaenergy.com/mysolviva"
+zone_name = "solvivaenergy.com"
+
+[[routes]]
+pattern = "www.solvivaenergy.com/mysolviva/*"
+zone_name = "solvivaenergy.com"
+
+[[routes]]
+pattern = "solvivaenergy.com/mysolviva"
+zone_name = "solvivaenergy.com"
+
+[[routes]]
+pattern = "solvivaenergy.com/mysolviva/*"
+zone_name = "solvivaenergy.com"

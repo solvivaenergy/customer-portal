@@ -29,10 +29,7 @@ export default function ContactSupportPage() {
       <PageHeader title="Contact support" subtitle={`Our hotline is available ${CONTACT.hotlineHours}.`} />
       <div className="anim-fade-up">
         <Card className="max-w-3xl">
-          <div className="grid gap-8 sm:grid-cols-2">
-            <PhoneRow label={CONTACT.nonTechnical.label} phone={CONTACT.nonTechnical.phone} tel={CONTACT.nonTechnical.tel} />
-            <PhoneRow label={CONTACT.technical.label} phone={CONTACT.technical.phone} tel={CONTACT.technical.tel} />
-          </div>
+          <PhoneRow label={CONTACT.technical.label} phone={CONTACT.technical.phone} tel={CONTACT.technical.tel} />
           <div className="my-8 border-t border-neutral-200" />
           <ul className="flex flex-col gap-5 text-base text-neutral-700">
             <li className="flex items-start gap-3">

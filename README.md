@@ -21,8 +21,12 @@ production data, read-only except for your own profile edits.
 
 `VITE_ENABLE_SUBMISSIONS` is `false` by default: the ticket and PMS forms validate and show the success
 screen without posting anything to n8n/Odoo. Set it to `true` in `.env.local` to send real submissions.
+`VITE_ENABLE_PMS` is also `false` by default (since 2026-11-05): the Support hub shows Request PMS as
+"Coming soon", the PMS tab and pages are hidden and the PMS webhooks are never called. Set it to `true`
+to work on the PMS flow.
 
-Other scripts: `npm run typecheck`, `npm run build` (output in `dist/`), `npm run preview`.
+Other scripts: `npm run typecheck`, `npm run build` (output in `dist/`), `npm run preview`,
+`npm run build:production` / `npm run deploy:production` (see Environments).
 
 ## Layout
 
@@ -55,7 +59,28 @@ unless the repository variable `VITE_ENABLE_SUBMISSIONS` is `true`. Deep links w
 
 For the password-reset email to land back on the demo, add
 `https://solvivaenergy.github.io/customer-portal/reset-password` to Supabase → Authentication → URL
-configuration → Redirect URLs.
+configuration → Redirect URLs (not done yet; the production URL below is).
 
-**Later:** a staging Supabase project, a Solviva subdomain (Cloudflare Pages), and the monitoring API's
-`ALLOWED_ORIGINS` extended with that origin.
+**Production (the website's `/mysolviva` path):** https://www.solvivaenergy.com/mysolviva — since
+2026-11-05 a Cloudflare Worker named `customer-portal` on Solviva's `solvivaenergy.com` zone, the same
+way `/calculator`, `/pms` and `/prioritybooking` are served there. The Worker carries the Vite build as
+static assets and maps `/mysolviva/*` onto it (`wrangler.toml`, `worker/index.js`); the apex host
+redirects to `www`. Never put it on a `workers.dev` host: nothing else is configured for that origin.
+
+- Build: `node scripts/build-production.mjs` — base path `/mysolviva/`, monitoring API
+  `https://monitoring.solvivaenergy.com`, the **staging** n8n webhooks (no production portal workflows
+  exist yet, see `docs/integrations.md`), submissions on, PMS off. The repository variables
+  `VITE_N8N_WEBHOOK_URL_PRODUCTION`, `VITE_ENABLE_SUBMISSIONS_PRODUCTION` and `VITE_ENABLE_PMS_PRODUCTION`
+  override those defaults in CI.
+- Deploy: `.github/workflows/production.yml` runs on every push to `main` and deploys once the repository
+  secret `CLOUDFLARE_API_TOKEN` exists (an API token with *Workers Scripts: Edit* and *Workers Routes:
+  Edit* on the `solvivaenergy.com` zone; `CLOUDFLARE_ACCOUNT_ID` is already set). The shared token in
+  `solviva-inquiry/.env` is read-only for Workers, so until then the workflow builds and warns instead of
+  deploying. By hand: `npm run deploy:production` after `npx wrangler login`, or with
+  `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in the environment.
+- Already wired for that origin: the monitoring API's `ALLOWED_ORIGINS` (`api/main.py` in the monitoring
+  repo) and Supabase Auth's redirect allow-list (`https://www.solvivaenergy.com/mysolviva/**`, for the
+  password-reset mail). The n8n webhooks answer any origin.
+
+**Later:** a staging Supabase project; production copies of the portal n8n workflows that verify the
+Supabase JWT (today the staging ones trust the email the browser sends).

@@ -4,10 +4,11 @@ import { ArrowLeft, ArrowRight, ChevronRight, Inbox } from "lucide-react";
 import { PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/icons";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Spinner, cx, type BadgeTone } from "@/components/ui";
+import { env } from "@/lib/env";
 import { usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
 import { useMyPms } from "@/lib/usePms";
-import { dateTime, longDate, shortDate, truncate } from "@/lib/format";
+import { dateTime, longDate, oneLine, shortDate, truncate } from "@/lib/format";
 import type { PmsRecord, Ticket, TicketStatus } from "@/lib/types";
 
 export const STATUS_TONE: Record<TicketStatus, BadgeTone> = { New: "blue", "In Progress": "amber", Resolved: "green", Cancelled: "neutral" };
@@ -25,6 +26,35 @@ function ActionCard({ to, icon, title, description, tour }: { to: string; icon: 
       <p className="mt-6 text-xl font-semibold text-neutral-900">{title}</p>
       <p className="mt-1 text-sm text-neutral-500">{description}</p>
     </Link>
+  );
+}
+
+/* The same card, switched off: not a link, muted icon, "Coming soon" where the chevron would be. */
+function ComingSoonCard({ icon, title, description, tour }: { icon: React.ReactNode; title: string; description: string; tour?: string }) {
+  return (
+    <div data-tour={tour} aria-disabled="true" className="rounded-xl border border-neutral-200 bg-neutral-50 p-6">
+      <div className="flex items-start justify-between gap-3">
+        <span className="opacity-60 grayscale">{icon}</span>
+        <Badge tone="brand">Coming soon</Badge>
+      </div>
+      <p className="mt-6 text-xl font-semibold text-neutral-600">{title}</p>
+      <p className="mt-1 text-sm text-neutral-500">{description}</p>
+    </div>
+  );
+}
+
+/** The three Support cards. Exported for the dev preview; PMS reads "Coming soon" while env.pmsEnabled is off. */
+export function SupportActionCards() {
+  return (
+    <div className="grid gap-5 md:grid-cols-3">
+      <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" tour="ticket" />
+      {env.pmsEnabled ? (
+        <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" tour="pms" />
+      ) : (
+        <ComingSoonCard icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Scheduling your preventive maintenance service from the portal is coming soon." tour="pms" />
+      )}
+      <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." tour="contact" />
+    </div>
   );
 }
 
@@ -82,7 +112,8 @@ function RefLink({ to, children }: { to: string; children: React.ReactNode }) {
 export default function SupportHubPage() {
   const { profile, systems } = usePortal();
   const tickets = useTickets(profile?.email);
-  const pms = useMyPms(profile, systems);
+  // With PMS switched off the PMS tab is gone and the PMS webhook is never called.
+  const pms = useMyPms(profile, systems, env.pmsEnabled);
   const navigate = useNavigate();
   const [kind, setKind] = useState<"support" | "pms">("support");
   const [page, setPage] = useState(1);
@@ -95,32 +126,30 @@ export default function SupportHubPage() {
   return (
     <>
       <Breadcrumb items={[{ label: "Home", to: "/" }, { label: "Support" }]} />
-      <PageHeader title="Support and Helpdesk" subtitle="Submit a ticket, request a maintenance visit, or reach our team." />
+      <PageHeader title="Support and Helpdesk" subtitle={env.pmsEnabled ? "Submit a ticket, request a maintenance visit, or reach our team." : "Submit a ticket or reach our team."} />
 
       <div className="anim-fade-up">
-        <div className="grid gap-5 md:grid-cols-3">
-          <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" tour="ticket" />
-          <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" tour="pms" />
-          <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." tour="contact" />
-        </div>
+        <SupportActionCards />
 
         {/* Phone: heading + Refresh on one line, the Support | PMS switch stretched across the next
             (Figma "Mobile_support"). From sm up: heading, then the switch beside Refresh. */}
         <div className="mb-4 mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
           <h2 className="text-2xl font-semibold text-neutral-900 sm:basis-full">My activities</h2>
-          <Segmented
-            options={[
-              { id: "support", label: "Support" },
-              { id: "pms", label: "PMS" },
-            ]}
-            value={kind}
-            onChange={(k) => {
-              setKind(k);
-              setPage(1);
-            }}
-            stretch
-            className="order-last basis-full sm:order-none sm:basis-auto"
-          />
+          {env.pmsEnabled && (
+            <Segmented
+              options={[
+                { id: "support", label: "Support" },
+                { id: "pms", label: "PMS" },
+              ]}
+              value={kind}
+              onChange={(k) => {
+                setKind(k);
+                setPage(1);
+              }}
+              stretch
+              className="order-last basis-full sm:order-none sm:basis-auto"
+            />
+          )}
           <Button variant="ghost" size="sm" onClick={() => (kind === "support" ? tickets.refresh() : pms.refresh())} disabled={active.loading} className="ml-auto sm:order-last">
             Refresh
           </Button>
@@ -170,7 +199,7 @@ export default function SupportHubPage() {
                         <td className={cx(cell, wideCell, "text-neutral-700")} title={t.categories.join(", ") || undefined}>
                           {t.category || "—"}
                         </td>
-                        <td className={cx(cell, wideCell, "text-neutral-600")}>{truncate(t.description || t.subject, 48) || "—"}</td>
+                        <td className={cx(cell, wideCell, "text-neutral-600")}>{truncate(oneLine(t.description) || t.subject, 48) || "—"}</td>
                         <td className={cx(cell, wideCell, "text-neutral-700")}>{shortDate(t.createdAt)}</td>
                         <td className={cell}>
                           <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>

@@ -4,6 +4,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 // Dev-only brand preview; the conditional route below is dropped from production builds.
 const DevPreviewPage = lazy(() => import("./pages/DevPreviewPage"));
 import { useAuth } from "./auth/AuthProvider";
+import { env } from "./lib/env";
 import { PortalProvider } from "./lib/portal";
 import { TourProvider } from "./lib/tour";
 import { AppShell } from "./layout/AppShell";
@@ -70,9 +71,16 @@ export default function App() {
         <Route path="/support/tickets/new" element={<NewTicketPage />} />
         <Route path="/support/tickets/:id" element={<TicketDetailPage />} />
         <Route path="/support/contact" element={<ContactSupportPage />} />
-        <Route path="/support/pms" element={<PmsIntroPage />} />
-        <Route path="/support/pms/request" element={<PmsRequestPage />} />
-        <Route path="/support/pms/requests/:id" element={<PmsDetailPage />} />
+        {/* PMS is switched off (env.pmsEnabled): its pages go back to the Support hub, where the card says "Coming soon". */}
+        {env.pmsEnabled ? (
+          <>
+            <Route path="/support/pms" element={<PmsIntroPage />} />
+            <Route path="/support/pms/request" element={<PmsRequestPage />} />
+            <Route path="/support/pms/requests/:id" element={<PmsDetailPage />} />
+          </>
+        ) : (
+          <Route path="/support/pms/*" element={<Navigate to="/support" replace />} />
+        )}
         <Route path="/support/success" element={<SubmissionSuccessPage />} />
         <Route path="/account" element={<Navigate to="/account/profile" replace />} />
         <Route path="/account/:tab" element={<AccountPage />} />
