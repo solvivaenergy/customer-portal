@@ -78,7 +78,9 @@ headers for arbitrary origins, so the proxy (or a server-side relay) is required
 
 https://www.solvivaenergy.com/mysolviva is a Cloudflare Worker (`customer-portal`, routes
 `www.solvivaenergy.com/mysolviva*` and the apex → www) carrying the build as static assets; see the README's
-Environments section for the build defaults, the deploy workflow and the token it needs. Done for that
+Environments section for the build defaults and the deploy workflow. Live since 2026-11-05: the repository
+secret `CLOUDFLARE_API_TOKEN` is a Workers-write token that exists only on GitHub, so every push to `main`
+deploys from CI; a deploy from a PC needs `npx wrangler login` first. Done for that
 origin: `ALLOWED_ORIGINS` in the monitoring API (`api/main.py`, deployed from the monitoring repo's `main`),
 Supabase Auth redirect allow-list entry `https://www.solvivaenergy.com/mysolviva/**`. The production site
 uses the **staging** n8n workflows (odoo.sh staging) until production copies exist, so tickets submitted
@@ -86,8 +88,6 @@ there land on staging Odoo, which odoo.sh rebuilds from production about monthly
 
 ## Before go-live (not done)
 
-- A Cloudflare API token with Workers write access as the repository secret `CLOUDFLARE_API_TOKEN`
-  (the shared read token cannot deploy); the first production deploy happens on the next push after that.
 - Production copies of the portal n8n workflows (tickets, messages, reply, system; PMS when switched
   back on) aimed at production Odoo, verifying the Supabase JWT instead of trusting the email the
   browser sends; then set `VITE_N8N_WEBHOOK_URL_PRODUCTION` to `…/webhook`.
