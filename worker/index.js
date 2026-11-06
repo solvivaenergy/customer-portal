@@ -98,8 +98,13 @@ export default {
     const response = await env.ASSETS.fetch(new Request(url.href, request));
 
     // Vite hashes everything under /assets/, so those can be cached for good; index.html keeps the
-    // store's own revalidation headers so a new deploy shows up on the next load.
-    const immutable = response.ok && url.pathname.startsWith("/assets/");
-    return withSecurityHeaders(response, { cacheControl: immutable ? ONE_YEAR : undefined });
+    // store's own revalidation headers so a new deploy shows up on the next load. A hashed file that
+    // no longer exists (a tab opened before a deploy asking for an old chunk) must get a plain 404,
+    // not the SPA fallback: that would be index.html cached for a year under a .js URL.
+    const isAsset = url.pathname.startsWith("/assets/");
+    if (isAsset && (response.headers.get("Content-Type") || "").includes("text/html")) {
+      return withSecurityHeaders(new Response("Not found", { status: 404 }));
+    }
+    return withSecurityHeaders(response, { cacheControl: response.ok && isAsset ? ONE_YEAR : undefined });
   },
 };
