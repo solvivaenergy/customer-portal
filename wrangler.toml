@@ -18,6 +18,15 @@ compatibility_date = "2026-10-01"
 workers_dev = false
 preview_urls = false
 
+# Workers Logs (free tier, 3-day retention): the Worker's console.log lines — the browsers' CSP violation
+# reports among them — under Workers & Pages → customer-portal → Logs. Invocation logs stay off so the
+# feed is only what the Worker chose to log.
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = false
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
