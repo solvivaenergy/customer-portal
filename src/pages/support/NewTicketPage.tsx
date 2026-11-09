@@ -2,13 +2,13 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Button, Card, ErrorNotice, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
-import { odooEmail, usePortal } from "@/lib/portal";
+import { odooEmail, odooIdentity, usePortal } from "@/lib/portal";
 import { createTicket, TICKET_CATEGORIES } from "@/lib/tickets";
 import { invalidateTickets } from "@/lib/useTickets";
 import { env } from "@/lib/env";
 
 export default function NewTicketPage() {
-  const { profile, system } = usePortal();
+  const { profile, system, systems } = usePortal();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState(profile?.full_name ?? profile?.odoo_customer_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
@@ -33,7 +33,7 @@ export default function NewTicketPage() {
     try {
       // Filed under the customer's Odoo email so it lands on their Odoo partner, whatever they sign in with.
       await createTicket({ fullName: fullName.trim(), email: odooEmail(profile), phone: phone.trim(), stationId: system?.solis_station_id ?? profile?.solis_station_id ?? "", category, details: details.trim() });
-      if (odooEmail(profile)) invalidateTickets(odooEmail(profile));
+      invalidateTickets(odooIdentity(profile, systems));
       navigate("/support/success", { state: { kind: "ticket", dryRun: !env.submissionsEnabled } });
     } catch (err) {
       setError((err as Error).message);

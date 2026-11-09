@@ -89,15 +89,23 @@ const addressOf = (from: string | false) => {
 };
 const displayNameOf = (from: string | false) => String(from || "").replace(/<[^>]*>/, "").replace(/"/g, "").trim();
 
-export async function fetchTicketMessages(email: string, ticketId: number, me: { partnerId: number | null }): Promise<TicketMessage[]> {
+/**
+ * Who the customer is to Odoo (lib/portal.tsx odooIdentity): the Odoo partner id, the lead ids of
+ * every plant, and the Odoo email. n8n matches tickets on the partner ids first (resolving the leads'
+ * partners too) and on the email as a fallback; the login email is not used — it is the Solis address.
+ */
+export type OdooIdentity = { email: string; partnerId: number | null; leadIds: number[] };
+const identityBody = (me: OdooIdentity) => ({ email: me.email, partner_id: me.partnerId ?? undefined, lead_ids: me.leadIds });
+
+export async function fetchTicketMessages(me: OdooIdentity, ticketId: number): Promise<TicketMessage[]> {
   const res = await fetch(`${env.n8nWebhookUrl}/get-ticket-messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, ticket_id: ticketId }),
+    body: JSON.stringify({ ...identityBody(me), ticket_id: ticketId }),
   });
   if (!res.ok) throw new Error(`Message lookup failed (${res.status})`);
   const rows = unwrap<OdooMessage>(await res.json(), "message");
-  const myEmail = email.trim().toLowerCase();
+  const myEmail = me.email.trim().toLowerCase();
   return rows
     .map((m) => {
       const addr = addressOf(m.email_from);
@@ -111,7 +119,7 @@ export async function fetchTicketMessages(email: string, ticketId: number, me: {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export async function postTicketReply(email: string, ticketId: number, body: string): Promise<void> {
+export async function postTicketReply(me: OdooIdentity, ticketId: number, body: string): Promise<void> {
   if (!env.submissionsEnabled) {
     console.info("[submissions disabled] would POST to n8n ticket-reply:", { ticketId, body });
     await new Promise((r) => setTimeout(r, 600));
@@ -120,18 +128,18 @@ export async function postTicketReply(email: string, ticketId: number, body: str
   const res = await fetch(`${env.n8nWebhookUrl}/ticket-reply`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, ticket_id: ticketId, body }),
+    body: JSON.stringify({ ...identityBody(me), ticket_id: ticketId, body }),
   });
   if (!res.ok) throw new Error(`Reply failed (${res.status})`);
   const json = (await res.json().catch(() => null)) as { id?: number; error?: unknown } | null;
   if (json?.error) throw new Error(String(json.error));
 }
 
-export async function fetchMyTickets(email: string): Promise<Ticket[]> {
+export async function fetchMyTickets(me: OdooIdentity): Promise<Ticket[]> {
   const res = await fetch(`${env.n8nWebhookUrl}/get-my-tickets`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify(identityBody(me)),
   });
   if (!res.ok) throw new Error(`Ticket lookup failed (${res.status})`);
   return unwrap<OdooTicket>(await res.json(), "ticket")

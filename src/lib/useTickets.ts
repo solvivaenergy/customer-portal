@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchMyTickets } from "./tickets";
+import { fetchMyTickets, type OdooIdentity } from "./tickets";
 import type { Ticket } from "./types";
 
 const cache = new Map<string, { at: number; tickets: Ticket[] }>();
 const TTL_MS = 60_000;
+const keyOf = (me: OdooIdentity | null | undefined) => (me ? JSON.stringify([me.email, me.partnerId, me.leadIds]) : null);
 
-export function useTickets(email: string | null | undefined) {
-  const [tickets, setTickets] = useState<Ticket[] | null>(() => (email && cache.get(email)?.tickets) || null);
+/** The customer's tickets, cached a minute per identity (partner id, lead ids, Odoo email). */
+export function useTickets(me: OdooIdentity | null | undefined) {
+  const key = keyOf(me);
+  const [tickets, setTickets] = useState<Ticket[] | null>(() => (key && cache.get(key)?.tickets) || null);
   const [loading, setLoading] = useState(!tickets);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
     async (force = false) => {
-      if (!email) return;
-      const hit = cache.get(email);
+      if (!me || !key) return;
+      const hit = cache.get(key);
       if (!force && hit && Date.now() - hit.at < TTL_MS) {
         setTickets(hit.tickets);
         setLoading(false);
@@ -22,8 +25,8 @@ export function useTickets(email: string | null | undefined) {
       setLoading(true);
       setError(null);
       try {
-        const t = await fetchMyTickets(email);
-        cache.set(email, { at: Date.now(), tickets: t });
+        const t = await fetchMyTickets(me);
+        cache.set(key, { at: Date.now(), tickets: t });
         setTickets(t);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -31,7 +34,8 @@ export function useTickets(email: string | null | undefined) {
         setLoading(false);
       }
     },
-    [email],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures everything in `me`
+    [key],
   );
 
   useEffect(() => {
@@ -41,6 +45,7 @@ export function useTickets(email: string | null | undefined) {
   return { tickets, loading, error, refresh: () => load(true) };
 }
 
-export function invalidateTickets(email: string) {
-  cache.delete(email);
+export function invalidateTickets(me: OdooIdentity | null | undefined) {
+  const key = keyOf(me);
+  if (key) cache.delete(key);
 }

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { supabase } from "./supabase";
 import { useAuth } from "@/auth/AuthProvider";
 import { fetchSystemDetails, type SystemDetails } from "./system";
+import type { OdooIdentity } from "./tickets";
 import type { Profile, Provider, Rate, RateTier, SolarSystem } from "./types";
 
 type PortalState = {
@@ -130,6 +131,17 @@ export function PortalProvider({ children }: { children: ReactNode }) {
  * customers. Falls back to the login for a profile the nightly mirror has not filled yet.
  */
 export const odooEmail = (p: Profile | null | undefined): string => p?.odoo_email || p?.email || "";
+
+/**
+ * Who the customer is to Odoo, for the ticket webhooks: the profile's partner id, the lead ids of
+ * every plant (a customer with several properties can have several partner records) and the Odoo
+ * email as the fallback. Null until the profile is loaded. Stable for equal inputs, so hooks can key on it.
+ */
+export function odooIdentity(p: Profile | null | undefined, systems: SolarSystem[]): OdooIdentity | null {
+  if (!p) return null;
+  const leadIds = systems.map((s) => s.odoo_lead_id).filter((x): x is number => typeof x === "number").sort((a, b) => a - b);
+  return { email: odooEmail(p), partnerId: p.odoo_partner_id ?? null, leadIds };
+}
 
 export function usePortal(): PortalState {
   const ctx = useContext(PortalContext);

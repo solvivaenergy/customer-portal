@@ -5,7 +5,7 @@ import { PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/ico
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Spinner, cx, type BadgeTone } from "@/components/ui";
 import { env } from "@/lib/env";
-import { odooEmail, usePortal } from "@/lib/portal";
+import { odooIdentity, usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
 import { useMyPms } from "@/lib/usePms";
 import { dateTime, longDate, oneLine, shortDate, truncate } from "@/lib/format";
@@ -111,7 +111,7 @@ function RefLink({ to, children }: { to: string; children: React.ReactNode }) {
 
 export default function SupportHubPage() {
   const { profile, systems } = usePortal();
-  const tickets = useTickets(odooEmail(profile));
+  const tickets = useTickets(odooIdentity(profile, systems));
   // With PMS switched off the PMS tab is gone and the PMS webhook is never called.
   const pms = useMyPms(profile, systems, env.pmsEnabled);
   const navigate = useNavigate();

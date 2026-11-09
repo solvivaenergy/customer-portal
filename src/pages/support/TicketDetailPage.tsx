@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronDown, Inbox } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Card, Collapse, EmptyState, ErrorNotice, PageHeader, Spinner, Textarea, cx } from "@/components/ui";
-import { odooEmail, usePortal } from "@/lib/portal";
+import { odooIdentity, usePortal } from "@/lib/portal";
 import { useTickets } from "@/lib/useTickets";
 import { useTicketMessages } from "@/lib/useTicketMessages";
 import { dateTime, initials, relative } from "@/lib/format";
@@ -70,10 +70,11 @@ export function TicketDetailsCard({ ticket }: { ticket: Ticket }) {
 
 export default function TicketDetailPage() {
   const { id } = useParams();
-  const { profile } = usePortal();
-  const { tickets, loading, error } = useTickets(odooEmail(profile));
+  const { profile, systems } = usePortal();
+  const me = odooIdentity(profile, systems);
+  const { tickets, loading, error } = useTickets(me);
   const ticket = tickets?.find((t) => String(t.id) === id);
-  const thread = useTicketMessages(odooEmail(profile), ticket?.id ?? null, profile?.odoo_partner_id ?? null);
+  const thread = useTicketMessages(me, ticket?.id ?? null);
   const [activityOpen, setActivityOpen] = useState(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);

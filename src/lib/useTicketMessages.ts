@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { env } from "./env";
-import { fetchTicketMessages, postTicketReply } from "./tickets";
+import { fetchTicketMessages, postTicketReply, type OdooIdentity } from "./tickets";
 import type { TicketMessage } from "./types";
 
 /**
@@ -8,23 +8,25 @@ import type { TicketMessage } from "./types";
  * shows up at once; with submissions enabled the thread is then re-read so the entry carries
  * Odoo's id and timestamp (with them disabled the local copy is all there is).
  */
-export function useTicketMessages(email: string | null | undefined, ticketId: number | null, partnerId: number | null) {
+export function useTicketMessages(me: OdooIdentity | null | undefined, ticketId: number | null) {
   const [messages, setMessages] = useState<TicketMessage[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const key = me ? JSON.stringify([me.email, me.partnerId, me.leadIds]) : null;
 
   const load = useCallback(async () => {
-    if (!email || ticketId == null) return;
+    if (!me || ticketId == null) return;
     setLoading(true);
     setError(null);
     try {
-      setMessages(await fetchTicketMessages(email, ticketId, { partnerId }));
+      setMessages(await fetchTicketMessages(me, ticketId));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [email, ticketId, partnerId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures everything in `me`
+  }, [key, ticketId]);
 
   useEffect(() => {
     void load();
@@ -32,13 +34,14 @@ export function useTicketMessages(email: string | null | undefined, ticketId: nu
 
   const reply = useCallback(
     async (body: string) => {
-      if (!email || ticketId == null) throw new Error("Not signed in");
-      await postTicketReply(email, ticketId, body);
-      const local: TicketMessage = { id: -Date.now(), body, author: "You", email, date: new Date().toISOString(), mine: true, staff: false };
+      if (!me || ticketId == null) throw new Error("Not signed in");
+      await postTicketReply(me, ticketId, body);
+      const local: TicketMessage = { id: -Date.now(), body, author: "You", email: me.email, date: new Date().toISOString(), mine: true, staff: false };
       setMessages((m) => [local, ...(m ?? [])]);
       if (env.submissionsEnabled) void load();
     },
-    [email, ticketId, load],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures everything in `me`
+    [key, ticketId, load],
   );
 
   return { messages, loading, error, reply, refresh: load };

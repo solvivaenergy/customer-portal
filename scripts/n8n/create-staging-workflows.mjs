@@ -99,6 +99,35 @@ function buildIntake(prod) {
   };
 }
 
+/* ------------------------------------------------------------ Who owns a ticket (ids first, email second) */
+
+/**
+ * The portal sends `{ email, partner_id, lead_ids }` (lib/portal.tsx odooIdentity). The customer's
+ * Odoo partner ids are the profile's partner plus the partner on each of their plants' leads — a
+ * customer with several properties can have several partner records (three for Amparo Dionisio).
+ * Since 2026-11-09 a ticket is theirs when its partner_id is one of those, OR its partner_email is
+ * the customer's Odoo email (the fallback for tickets filed from the website form, which Odoo
+ * matches by email). The login email plays no part: it is the Solis Cloud address.
+ */
+const leadPartnersNode = (prodList) => {
+  const node = clone(prodList, "Odoo Search Tickets");
+  node.name = "Odoo Read Lead Partners";
+  node.position = [520, 300];
+  node.parameters.url = STAGING_JSONRPC;
+  node.parameters.body =
+    "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 5, params: { service: 'object', method: 'execute_kw', args: [" +
+    "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'crm.lead', 'search_read', " +
+    "[[ ['id', 'in', ($('Webhook').item.json.body.lead_ids || []).map(Number).filter(Boolean).slice(0, 20)] ]], " +
+    "{ fields: ['id', 'partner_id'], limit: 20 }] } }) }}";
+  return node;
+};
+// Expression (inside {{ }}): every partner id the request resolves to.
+const PARTNER_IDS =
+  "[Number($('Webhook').item.json.body.partner_id) || 0].concat((Array.isArray($('Odoo Read Lead Partners').item.json.result) ? $('Odoo Read Lead Partners').item.json.result : []).map((l) => Array.isArray(l.partner_id) ? l.partner_id[0] : 0)).filter(Boolean)";
+// Domain fragment: the ticket belongs to the customer. Substring match on the email because Odoo
+// often stores partner_email as "Name" <email>; '__no_email__' keeps an empty email from matching all.
+const OWNER_DOMAIN = `'|', ['partner_id', 'in', ${PARTNER_IDS}], ['partner_email', 'ilike', $('Webhook').item.json.body.email || '__no_email__']`;
+
 function buildList(prod) {
   const webhook = clone(prod, "Webhook");
   webhook.position = [0, 300];
@@ -117,21 +146,24 @@ function buildList(prod) {
       params: { service: "common", method: "authenticate", args: ["{{ $vars.ODOO_SH_STAGING_DB }}", "{{ $vars.ODOO_SH_STAGING_USER }}", "{{ $vars.ODOO_SH_STAGING_KEY }}", {}] },
     });
 
+  const partners = leadPartnersNode(prod);
+
+  const PROD_DOMAIN = "[[ ['partner_email', '=', $('Webhook').item.json.body.email] ]]";
   const search = clone(prod, "Odoo Search Tickets");
-  search.position = [520, 300];
+  search.position = [780, 300];
   search.parameters.url = STAGING_JSONRPC;
+  if (!String(search.parameters.body).includes(PROD_DOMAIN)) throw new Error("Production 'Odoo Search Tickets' domain changed — update PROD_DOMAIN in buildList");
   search.parameters.body = String(search.parameters.body)
     .replace(/\$vars\.ODOO_SH_PROD_DB/g, "$vars.ODOO_SH_STAGING_DB")
     .replace(/\$vars\.ODOO_API_KEY/g, "$vars.ODOO_SH_STAGING_KEY")
-    // Substring match: Odoo often stores partner_email as "Name" <email>, which an exact match misses.
-    .replace("['partner_email', '=',", "['partner_email', 'ilike',")
+    .replace(PROD_DOMAIN, `[[ ${OWNER_DOMAIN} ]]`)
     .replace("'partner_name'", "'partner_name', 'ticket_ref', 'team_id', 'tag_ids'");
 
   // tag_ids come back as ids; read the names (helpdesk.tag) and attach them as `tags` — the
   // portal's "Category" column is the first tag.
   const tags = clone(prod, "Odoo Search Tickets");
   tags.name = "Odoo Read Tags";
-  tags.position = [780, 300];
+  tags.position = [1040, 300];
   tags.parameters.url = STAGING_JSONRPC;
   tags.parameters.body =
     "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 3, params: { service: 'object', method: 'execute_kw', args: [" +
@@ -143,7 +175,7 @@ function buildList(prod) {
     name: "Attach tag names",
     type: "n8n-nodes-base.code",
     typeVersion: 2,
-    position: [1040, 300],
+    position: [1300, 300],
     parameters: {
       mode: "runOnceForAllItems",
       jsCode: String.raw`const search = $('Odoo Search Tickets').first().json;
@@ -154,16 +186,17 @@ return [{ json: { result: search.result.map((t) => ({ ...t, tags: (t.tag_ids || 
   };
 
   const respond = clone(prod, "Respond to Webhook");
-  respond.position = [1300, 300];
+  respond.position = [1560, 300];
   // Surface Odoo errors instead of silently answering [] (the portal shows them).
   respond.parameters.responseBody = "={{ JSON.stringify($json.result ?? { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
 
   return {
     name: "[STAGING] Portal Get My Tickets → Odoo",
-    nodes: [webhook, auth, search, tags, attach, respond],
+    nodes: [webhook, auth, partners, search, tags, attach, respond],
     connections: {
       Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
-      "Odoo Authenticate": { main: [[{ node: "Odoo Search Tickets", type: "main", index: 0 }]] },
+      "Odoo Authenticate": { main: [[{ node: "Odoo Read Lead Partners", type: "main", index: 0 }]] },
+      "Odoo Read Lead Partners": { main: [[{ node: "Odoo Search Tickets", type: "main", index: 0 }]] },
       "Odoo Search Tickets": { main: [[{ node: "Odoo Read Tags", type: "main", index: 0 }]] },
       "Odoo Read Tags": { main: [[{ node: "Attach tag names", type: "main", index: 0 }]] },
       "Attach tag names": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
@@ -182,16 +215,16 @@ const authNode = (prodList) => {
   return auth;
 };
 
-/** The ticket named in the request, only if its partner_email matches the email sent — the ownership check both chatter workflows start with. */
+/** The ticket named in the request, only if it is the customer's (OWNER_DOMAIN) — the ownership check both chatter workflows start with. */
 const checkTicketNode = (prodList) => {
   const check = clone(prodList, "Odoo Search Tickets");
   check.name = "Odoo Check Ticket";
-  check.position = [520, 300];
+  check.position = [780, 300];
   check.parameters.url = STAGING_JSONRPC;
   check.parameters.body =
     "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 2, params: { service: 'object', method: 'execute_kw', args: [" +
     "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'helpdesk.ticket', 'search_read', " +
-    "[[ ['id', '=', Number($('Webhook').item.json.body.ticket_id) || -1], ['partner_email', 'ilike', $('Webhook').item.json.body.email || '__no_email__'] ]], " +
+    `[[ ['id', '=', Number($('Webhook').item.json.body.ticket_id) || -1], ${OWNER_DOMAIN} ]], ` +
     "{ fields: ['id', 'partner_id', 'partner_email'], limit: 1 }] } }) }}";
   return check;
 };
@@ -209,7 +242,7 @@ function buildTicketMessages(prodList) {
 
   const read = clone(prodList, "Odoo Search Tickets");
   read.name = "Odoo Read Messages";
-  read.position = [780, 300];
+  read.position = [1040, 300];
   read.parameters.url = STAGING_JSONRPC;
   read.parameters.body =
     "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 3, params: { service: 'object', method: 'execute_kw', args: [" +
@@ -219,15 +252,16 @@ function buildTicketMessages(prodList) {
     `{ fields: ${JSON.stringify(MESSAGE_FIELDS)}, limit: 100, order: 'date desc' }] } }) }}`;
 
   const respond = clone(prodList, "Respond to Webhook");
-  respond.position = [1040, 300];
+  respond.position = [1300, 300];
   respond.parameters.responseBody = "={{ JSON.stringify($json.result ?? { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
 
   return {
     name: "[STAGING] Portal Ticket Messages → Odoo",
-    nodes: [webhook, authNode(prodList), checkTicketNode(prodList), read, respond],
+    nodes: [webhook, authNode(prodList), leadPartnersNode(prodList), checkTicketNode(prodList), read, respond],
     connections: {
       Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
-      "Odoo Authenticate": { main: [[{ node: "Odoo Check Ticket", type: "main", index: 0 }]] },
+      "Odoo Authenticate": { main: [[{ node: "Odoo Read Lead Partners", type: "main", index: 0 }]] },
+      "Odoo Read Lead Partners": { main: [[{ node: "Odoo Check Ticket", type: "main", index: 0 }]] },
       "Odoo Check Ticket": { main: [[{ node: "Odoo Read Messages", type: "main", index: 0 }]] },
       "Odoo Read Messages": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
     },
@@ -249,12 +283,12 @@ function buildTicketReply(prodList) {
     name: "Build reply",
     type: "n8n-nodes-base.code",
     typeVersion: 2,
-    position: [780, 300],
+    position: [1040, 300],
     parameters: {
       mode: "runOnceForAllItems",
       jsCode: String.raw`const b = $('Webhook').first().json.body || {};
 const found = (($('Odoo Check Ticket').first().json.result) || [])[0];
-if (!found) throw new Error('Ticket not found for this email');
+if (!found) throw new Error('Ticket not found for this customer');
 const text = String(b.body || '').trim();
 if (!text) throw new Error('The reply is empty');
 if (text.length > 5000) throw new Error('The reply is too long (5000 characters at most)');
@@ -269,22 +303,23 @@ return [{ json: { ticket_id: found.id, kwargs } }];`,
 
   const post = clone(prodList, "Odoo Search Tickets");
   post.name = "Odoo Post Reply";
-  post.position = [1040, 300];
+  post.position = [1300, 300];
   post.parameters.url = STAGING_JSONRPC;
   post.parameters.body =
     "={{ JSON.stringify({ jsonrpc: '2.0', method: 'call', id: 4, params: { service: 'object', method: 'execute_kw', args: [" +
     "$vars.ODOO_SH_STAGING_DB, $('Odoo Authenticate').item.json.result, $vars.ODOO_SH_STAGING_KEY, 'helpdesk.ticket', 'message_post', [[$json.ticket_id]], $json.kwargs] } }) }}";
 
   const respond = clone(prodList, "Respond to Webhook");
-  respond.position = [1300, 300];
+  respond.position = [1560, 300];
   respond.parameters.responseBody = "={{ JSON.stringify(typeof $json.result === 'number' ? { id: $json.result } : { error: $json.error?.data?.message ?? $json.error?.message ?? 'Odoo request failed' }) }}";
 
   return {
     name: "[STAGING] Portal Ticket Reply → Odoo",
-    nodes: [webhook, authNode(prodList), checkTicketNode(prodList), build, post, respond],
+    nodes: [webhook, authNode(prodList), leadPartnersNode(prodList), checkTicketNode(prodList), build, post, respond],
     connections: {
       Webhook: { main: [[{ node: "Odoo Authenticate", type: "main", index: 0 }]] },
-      "Odoo Authenticate": { main: [[{ node: "Odoo Check Ticket", type: "main", index: 0 }]] },
+      "Odoo Authenticate": { main: [[{ node: "Odoo Read Lead Partners", type: "main", index: 0 }]] },
+      "Odoo Read Lead Partners": { main: [[{ node: "Odoo Check Ticket", type: "main", index: 0 }]] },
       "Odoo Check Ticket": { main: [[{ node: "Build reply", type: "main", index: 0 }]] },
       "Build reply": { main: [[{ node: "Odoo Post Reply", type: "main", index: 0 }]] },
       "Odoo Post Reply": { main: [[{ node: "Respond to Webhook", type: "main", index: 0 }]] },
