@@ -34,11 +34,11 @@ Other scripts: `npm run typecheck`, `npm run build` (output in `dist/`), `npm ru
 src/
   auth/AuthProvider.tsx      Supabase Auth session, sign-in/out, reset and change password
   lib/portal.tsx             profile + systems + providers + rates (PortalProvider / usePortal)
-  lib/energy.ts              readings fetch + period aggregation (1D/1W/1M/1Y/YTD)
+  lib/energy.ts              readings fetch + period aggregation (1D/1W/1M/1Y; 1Y = a calendar year by month, arrows to earlier years)
   lib/savings.ts             ₱ savings = bill without solar (total kWh at its consumption level) − bill with solar (grid kWh at its level) + exported kWh × the DU's net-metering rate; the current month uses last month's levels, a system without a full month the flat rate
-  lib/api.ts                 monitoring API (/app/live, /app/hourly) with the user's JWT
+  lib/api.ts                 monitoring API (/app/live, /app/hourly, /app/weather) with the user's JWT
   lib/tickets.ts             n8n ticket list / ticket + PMS intake
-  lib/weather.ts             Open-Meteo chip (city guessed from the site address)
+  lib/weather.ts             weather chip: the plant's Solis Cloud forecast via /app/weather (low–high, city, condition icon)
   layout/                    sidebar shell, breadcrumb
   pages/auth/                login, forgot password, reset password (Figma "Log in" frames, revised 2026-10-23)
   pages/home/                dashboard: hero savings, performance, battery, share/celebration

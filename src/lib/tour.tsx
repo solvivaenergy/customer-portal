@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { env } from "./env";
 import { useAuth } from "@/auth/AuthProvider";
+import { mustChangePassword } from "@/lib/firstLogin";
 import { usePortal } from "./portal";
 import { firstName } from "./format";
 
@@ -119,7 +120,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // First login: once the Home page has its data, offer the tour (only accounts with a system — the
   // welcome says "your solar is live"). Any answer is recorded, so this shows once per account.
   useEffect(() => {
-    if (welcomed.current || !user || loading || error || !system || location.pathname !== "/") return;
+    // The first-login password prompt (auth/FirstLoginPasswordPrompt) goes first; the welcome waits for its answer.
+    if (welcomed.current || !user || mustChangePassword(user) || loading || error || !system || location.pathname !== "/") return;
     if (readRecord(user)) return;
     const t = setTimeout(() => {
       welcomed.current = true;

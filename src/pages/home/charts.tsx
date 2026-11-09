@@ -6,6 +6,10 @@ import { php, phpShort, num } from "@/lib/format";
 const COLORS = { grid: "#1f522b", solar: "#8be114", battery: "#def0d8", line: "#15803d", fill: "#f0fdf4", production: "#8be114", divider: "#98a2b3" };
 
 const axisStyle = { fontSize: 12, fill: "#667085" };
+/* On a phone the plot is ~300px wide: smaller tick type and a narrower value axis so the bars get the room (Alden, 2026-11-09). */
+const tickStyle = (compact?: boolean) => (compact ? { ...axisStyle, fontSize: 11 } : axisStyle);
+// Twelve month names across a ~260px plot need the smaller type (the Figma mobile frame uses it too).
+const xTickStyle = (compact?: boolean) => (compact ? { ...axisStyle, fontSize: 10 } : axisStyle);
 // Short ease when the period changes; the data arrays are memoised so an unrelated re-render does not replay it.
 const ANIM = { isAnimationActive: true, animationDuration: 500, animationEasing: "ease-out" } as const;
 
@@ -32,13 +36,13 @@ function TooltipBox({ title, rows }: { title: string; rows: { label: string; val
   );
 }
 
-export function SavingsChart({ points, interval, divider }: { points: SeriesPoint[]; interval?: number; divider?: YearDivider | null }) {
+export function SavingsChart({ points, interval, divider, compact }: { points: SeriesPoint[]; interval?: number; divider?: YearDivider | null; compact?: boolean }) {
   const data = useMemo(() => points.map((p) => ({ ...p, savings: Math.round(p.savings * 100) / 100 })), [points]);
   return (
     <div className="anim-fade-in h-64 w-full">
       <ResponsiveContainer>
         {/* accessibilityLayer off: it makes the surface focusable, and a click then draws the browser's focus box around the plot. */}
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer={false}>
+        <AreaChart data={data} margin={{ top: 8, right: compact ? 4 : 8, left: 0, bottom: 0 }} accessibilityLayer={false}>
           <defs>
             <linearGradient id="savingsFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={COLORS.line} stopOpacity={0.18} />
@@ -47,8 +51,8 @@ export function SavingsChart({ points, interval, divider }: { points: SeriesPoin
           </defs>
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
           {/* Band scale so a ReferenceLine with position="start" can sit between two months. */}
-          <XAxis dataKey="label" scale="band" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} />
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={(v: number) => phpShort(v)} width={64} />
+          <XAxis dataKey="label" scale="band" tick={xTickStyle(compact)} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} />
+          <YAxis tick={tickStyle(compact)} axisLine={false} tickLine={false} tickFormatter={(v: number) => phpShort(v)} width={compact ? 44 : 64} />
           <Tooltip
             cursor={{ stroke: "#d0d5dd" }}
             content={({ active, payload }) =>
@@ -63,18 +67,24 @@ export function SavingsChart({ points, interval, divider }: { points: SeriesPoin
   );
 }
 
-/** `xLabel` names the x-axis under the ticks ("Month" in the Figma "Homepage"; the Home page passes Hour / Day / Month by range). */
-export function ConsumptionChart({ points, hasConsumption, interval, divider, xLabel }: { points: SeriesPoint[]; hasConsumption: boolean; interval?: number; divider?: YearDivider | null; xLabel?: string }) {
+/**
+ * `xLabel` names the x-axis under the ticks ("Month" in the Figma "Homepage"; the Home page passes Hour / Day / Month by range).
+ * `hasBattery` false drops the Battery stack and tooltip row: a system without a battery shows Grid and Solar only.
+ */
+export function ConsumptionChart({ points, hasConsumption, hasBattery = true, interval, divider, xLabel, compact }: { points: SeriesPoint[]; hasConsumption: boolean; hasBattery?: boolean; interval?: number; divider?: YearDivider | null; xLabel?: string; compact?: boolean }) {
   const data = useMemo(() => points.map((p) => ({ ...p, grid: round1(p.grid), solar: round1(p.solar), battery: round1(p.battery), production: round1(p.production) })), [points]);
   return (
-    <div className="anim-fade-in h-64 w-full">
+    <div className="anim-fade-in w-full">
+      {/* On a phone the unit sits above the axis (as in the Figma "Homepage" mobile frame) instead of rotated beside it. */}
+      {compact && <p className="mb-1 text-[11px] text-neutral-500">kWh</p>}
+      <div className="h-64 w-full">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: xLabel ? 18 : 0 }} barCategoryGap="30%" accessibilityLayer={false}>
+        <BarChart data={data} margin={{ top: 8, right: compact ? 4 : 8, left: 0, bottom: xLabel ? 18 : 0 }} barCategoryGap="30%" accessibilityLayer={false}>
           <CartesianGrid vertical={false} stroke="#f2f4f7" />
-          <XAxis dataKey="label" tick={axisStyle} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -16, style: axisStyle } : undefined} />
+          <XAxis dataKey="label" tick={xTickStyle(compact)} axisLine={false} tickLine={false} interval={interval ?? "preserveStartEnd"} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -16, style: axisStyle } : undefined} />
           {/* Wide enough for four-digit ticks ("3,600") with the kWh caption clear of them. The rotated caption is
               centred on its x, so an offset under ~7 pushes half the glyphs outside the SVG and they get clipped. */}
-          <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={66} tickFormatter={(v: number) => num(v)} label={{ value: "kWh", angle: -90, position: "insideLeft", offset: 9, style: axisStyle }} />
+          <YAxis tick={tickStyle(compact)} axisLine={false} tickLine={false} width={compact ? 40 : 66} tickFormatter={(v: number) => num(v)} label={compact ? undefined : { value: "kWh", angle: -90, position: "insideLeft", offset: 9, style: axisStyle }} />
           <Tooltip
             cursor={{ fill: "#f9fafb" }}
             content={({ active, payload }) => {
@@ -84,7 +94,7 @@ export function ConsumptionChart({ points, hasConsumption, interval, divider, xL
                 ? [
                     { label: "Grid", value: `${num(p.grid, 1)} kWh`, color: COLORS.grid },
                     { label: "Solar", value: `${num(p.solar, 1)} kWh`, color: COLORS.solar },
-                    { label: "Battery", value: `${num(p.battery, 1)} kWh`, color: COLORS.battery },
+                    ...(hasBattery ? [{ label: "Battery", value: `${num(p.battery, 1)} kWh`, color: COLORS.battery }] : []),
                     { label: "Total", value: `${num(p.consumption ?? 0, 1)} kWh` },
                   ]
                 : [{ label: "Production", value: `${num(p.production, 1)} kWh`, color: COLORS.production }];
@@ -95,14 +105,16 @@ export function ConsumptionChart({ points, hasConsumption, interval, divider, xL
           {hasConsumption ? (
             <>
               <Bar dataKey="grid" stackId="c" fill={COLORS.grid} {...ANIM} />
-              <Bar dataKey="solar" stackId="c" fill={COLORS.solar} {...ANIM} />
-              <Bar dataKey="battery" stackId="c" fill={COLORS.battery} radius={[4, 4, 0, 0]} {...ANIM} />
+              {/* The rounded corners belong to the top of the stack. */}
+              <Bar dataKey="solar" stackId="c" fill={COLORS.solar} radius={hasBattery ? undefined : [4, 4, 0, 0]} {...ANIM} />
+              {hasBattery && <Bar dataKey="battery" stackId="c" fill={COLORS.battery} radius={[4, 4, 0, 0]} {...ANIM} />}
             </>
           ) : (
             <Bar dataKey="production" fill={COLORS.production} radius={[4, 4, 0, 0]} {...ANIM} />
           )}
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

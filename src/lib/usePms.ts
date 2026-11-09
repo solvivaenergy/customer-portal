@@ -13,7 +13,8 @@ export function useMyPms(profile: Profile | null, systems: SolarSystem[], enable
   const key = useMemo(() => {
     if (!profile || !enabled) return null;
     const leadIds = systems.map((s) => s.odoo_lead_id).filter((x): x is number => typeof x === "number");
-    return JSON.stringify({ email: profile.email, partnerId: profile.odoo_partner_id ?? null, leadIds });
+    // The Odoo email, not the login: the Maintenance app matches requests on the customer's Odoo address.
+    return JSON.stringify({ email: profile.odoo_email || profile.email, partnerId: profile.odoo_partner_id ?? null, leadIds });
   }, [profile, systems, enabled]);
   const [rows, setRows] = useState<PmsRecord[] | null>(() => (key && cache.get(key)?.rows) || null);
   const [loading, setLoading] = useState(!rows);

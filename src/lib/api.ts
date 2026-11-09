@@ -1,11 +1,12 @@
 import { supabase } from "./supabase";
 import { env } from "./env";
-import type { HourBucket, LiveData } from "./types";
+import type { HourBucket, LiveData, Weather } from "./types";
 
 /**
- * Monitoring API (FastAPI on Render). Authenticated with the Supabase JWT; the API
- * resolves the station from the login (own primary station, else the oldest grant),
- * so it always answers for that station regardless of the selected site.
+ * Monitoring API (FastAPI on Render). Authenticated with the Supabase JWT. /app/live and
+ * /app/hourly resolve the station from the login (own primary station, else the oldest
+ * grant), so they answer for that station regardless of the selected site; /app/weather
+ * takes the selected site's station and checks the login may view it.
  */
 async function call<T>(path: string): Promise<T> {
   const { data } = await supabase.auth.getSession();
@@ -30,4 +31,6 @@ export const api = {
     call<{ date: string; source: "live" | "stored"; station_id: string; totals: Record<string, number>; hours: HourBucket[] }>(
       `/app/hourly${dateKey ? `?date=${dateKey}` : ""}`,
     ),
+  /** Today's forecast as Solis Cloud shows it for the plant; null when Solis has none. */
+  weather: (stationId: string) => call<Weather | null>(`/app/weather?station_id=${encodeURIComponent(stationId)}`),
 };

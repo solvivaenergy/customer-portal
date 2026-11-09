@@ -89,13 +89,14 @@ export async function fetchLatestFiveMinute(systemId: string): Promise<FiveMinut
 
 /* --------------------------------------------------------------- aggregation */
 
-export type RangeId = "1D" | "1W" | "1M" | "1Y" | "YTD";
+// 1Y is a calendar year, month by month, with arrows to earlier years; it replaced the trailing
+// twelve months and the YTD view on 2026-11-09 (Alden).
+export type RangeId = "1D" | "1W" | "1M" | "1Y";
 export const RANGES: { id: RangeId; label: string }[] = [
   { id: "1D", label: "1D" },
   { id: "1W", label: "1W" },
   { id: "1M", label: "1M" },
   { id: "1Y", label: "1Y" },
-  { id: "YTD", label: "YTD" },
 ];
 
 export type Period = { range: RangeId; anchor: string /* Manila date key */ };
@@ -127,18 +128,12 @@ export function periodBounds(p: Period) {
       return { start, end, title: label, subtitle: `${fmtShort(start)} – ${fmtShort(end)}, ${y}`, canNav: true };
     }
     case "1Y": {
-      // Trailing 12 calendar months ending this month.
+      // The anchor's calendar year; the current year runs up to today.
       const t = dateFromKey(today);
-      const ty = t.getUTCFullYear();
-      const tm = t.getUTCMonth();
-      const start = manilaDateKey(new Date(Date.UTC(ty, tm - 11, 1, 4)));
-      return { start, end: today, title: "Last 12 months", subtitle: `${MONTHS[(tm + 1) % 12]} ${tm === 11 ? ty : ty - 1} – ${MONTHS[tm]} ${ty}`, canNav: false };
-    }
-    case "YTD": {
-      const t = dateFromKey(today);
-      const ty = t.getUTCFullYear();
-      const start = `${ty}-01-01`;
-      return { start, end: today, title: `Jan ${ty} – Present`, subtitle: `Since Jan ${ty}`, canNav: false };
+      const current = y >= t.getUTCFullYear();
+      const lastMonth = current ? t.getUTCMonth() : 11;
+      const subtitle = lastMonth === 0 ? `Jan ${y}` : `Jan – ${MONTHS[lastMonth]} ${y}`;
+      return { start: `${y}-01-01`, end: current ? today : `${y}-12-31`, title: String(y), subtitle, canNav: true };
     }
   }
 }
@@ -150,7 +145,7 @@ export function shiftPeriod(p: Period, dir: 1 | -1): Period {
   if (p.range === "1D") next = manilaDateKey(addDays(anchor, dir));
   else if (p.range === "1W") next = manilaDateKey(addDays(anchor, 7 * dir));
   else if (p.range === "1M") next = manilaDateKey(new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + dir, 1, 4)));
-  else return p;
+  else next = `${anchor.getUTCFullYear() + dir}-01-01`;
   return { ...p, anchor: next > today ? today : next };
 }
 
@@ -260,7 +255,7 @@ export function aggregateDaily(rows: DailyReading[], period: Period, rates: Rate
   }
 
   let points: SeriesPoint[];
-  if (period.range === "1Y" || period.range === "YTD") {
+  if (period.range === "1Y") {
     const byMonth = new Map<string, SeriesPoint>();
     // seed every month in range so the axis is complete
     for (let k = start; k <= end; ) {

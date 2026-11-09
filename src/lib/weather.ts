@@ -1,51 +1,58 @@
 import { useEffect, useState } from "react";
+import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudSnow, CloudSun, Moon, Sun, type LucideIcon } from "lucide-react";
+import { api } from "./api";
+import type { Weather } from "./types";
 
 /**
- * Current temperature for the system's city via Open-Meteo (free, no key). The city is
- * guessed from the address: the first comma-separated part, scanning from the end, that
- * geocodes inside the Philippines. Fails silently — the chip is simply hidden.
+ * Today's weather for the selected site, exactly as Solis Cloud shows it for the plant: the city
+ * set on the plant in Solis, the day's low and high, and the condition. The monitoring API reads
+ * it from the Solis station detail (/app/weather), so the chip always agrees with the Solis app;
+ * Solis refreshes the forecast around 05:00 Manila. Fails silently — the chip is simply hidden.
  */
-export type Weather = { city: string; temperatureC: number; code: number };
+const TTL_MS = 30 * 60 * 1000;
+const cache = new Map<string, { at: number; promise: Promise<Weather | null> }>();
 
-const cache = new Map<string, Promise<Weather | null>>();
-
-function candidates(address: string): string[] {
-  const parts = address
-    .split(/[,\n]/)
-    .map((s) => s.replace(/\b\d{4}\b/g, "").replace(/\b(Philippines|PH|Metro Manila|NCR)\b/gi, "").trim())
-    .filter((s) => s.length > 2 && !/^\d/.test(s));
-  const withCity = parts.filter((p) => /city|municipality/i.test(p));
-  return [...withCity.reverse(), ...parts.reverse()].map((p) => p.replace(/\bcity of\b/i, "").trim());
+function fetchWeather(stationId: string): Promise<Weather | null> {
+  const hit = cache.get(stationId);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.promise;
+  const promise = api.weather(stationId).catch((e: Error) => {
+    console.warn("weather unavailable:", e.message);
+    cache.delete(stationId);
+    return null;
+  });
+  cache.set(stationId, { at: Date.now(), promise });
+  return promise;
 }
 
-async function lookup(address: string): Promise<Weather | null> {
-  for (const name of candidates(address).slice(0, 4)) {
-    const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&country=PH&language=en`).then((r) => r.json()).catch(() => null);
-    const hit = geo?.results?.[0];
-    if (!hit) continue;
-    const wx = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${hit.latitude}&longitude=${hit.longitude}&current=temperature_2m,weather_code&timezone=Asia%2FManila`)
-      .then((r) => r.json())
-      .catch(() => null);
-    if (!wx?.current) continue;
-    return { city: hit.name, temperatureC: Math.round(wx.current.temperature_2m), code: wx.current.weather_code };
-  }
-  return null;
-}
-
-export function useWeather(address: string | null | undefined): Weather | null {
+export function useWeather(stationId: string | null | undefined): Weather | null {
   const [weather, setWeather] = useState<Weather | null>(null);
   useEffect(() => {
-    if (!address) return;
-    let p = cache.get(address);
-    if (!p) {
-      p = lookup(address);
-      cache.set(address, p);
-    }
+    setWeather(null); // a site without a station shows no chip, not the previous site's
+    if (!stationId) return;
     let alive = true;
-    p.then((w) => alive && setWeather(w));
+    fetchWeather(stationId).then((w) => alive && setWeather(w));
     return () => {
       alive = false;
     };
-  }, [address]);
+  }, [stationId]);
   return weather;
+}
+
+/** Solis conditions carry QWeather codes: 1xx clear and cloud, 3xx rain, 4xx snow, 5xx fog and haze. */
+export function weatherIcon(code: number | null, isDay: boolean): LucideIcon {
+  if (code == null) return isDay ? Sun : Moon;
+  if (code === 100 || code === 150 || code === 900) return isDay ? Sun : Moon;
+  if (code === 102 || code === 103 || code === 152 || code === 153) return isDay ? CloudSun : CloudMoon;
+  if (code < 300) return Cloud;
+  if (code >= 302 && code <= 304) return CloudLightning;
+  if (code === 309) return CloudDrizzle;
+  if (code < 400) return CloudRain;
+  if (code < 500) return CloudSnow;
+  if (code < 600) return CloudFog;
+  return Cloud;
+}
+
+/** "24–26°C", or "26°C" when Solis gives the same low and high. */
+export function temperatureRange(w: Weather): string {
+  return w.temp_min_c === w.temp_max_c ? `${w.temp_max_c}°C` : `${w.temp_min_c}–${w.temp_max_c}°C`;
 }

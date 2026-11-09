@@ -11,6 +11,7 @@ import { Button, Card, EmptyState, ErrorNotice, PageHeader, Segmented, Select, S
 import { REFERRAL } from "@/content/contact";
 import { ConsumptionChart, LEGEND, SavingsChart } from "./charts";
 import { CelebrationOverlay, ShareModal, type ShareKind } from "./share";
+import { PHONE_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
 
 /* --------------------------------------------------------------- helpers */
 
@@ -40,13 +41,15 @@ function patchToday(rows: DailyReading[], live: LiveData | null): DailyReading[]
   return copy;
 }
 
-function PeriodNav({ period, onChange }: { period: Period; onChange: (p: Period) => void }) {
+/** `since` is the first day with data: the arrow back greys out once the previous period would end before it. */
+function PeriodNav({ period, onChange, since }: { period: Period; onChange: (p: Period) => void; since?: string | null }) {
   const b = periodBounds(period);
-  const atToday = period.anchor >= todayKey();
+  const atToday = b.end >= todayKey();
+  const atStart = !!since && periodBounds(shiftPeriod(period, -1)).end < since;
   return (
     <div className="inline-flex items-center rounded-lg border border-neutral-300 bg-white shadow-xs">
       {b.canNav && (
-        <button onClick={() => onChange(shiftPeriod(period, -1))} className="px-2 py-2 text-neutral-500 hover:text-neutral-800" aria-label="Previous period">
+        <button onClick={() => onChange(shiftPeriod(period, -1))} disabled={atStart} className="px-2 py-2 text-neutral-500 hover:text-neutral-800 disabled:opacity-30" aria-label="Previous period">
           <ChevronLeft className="h-4 w-4" />
         </button>
       )}
@@ -75,8 +78,10 @@ export default function HomePage() {
   // The monitoring API answers for the login's own station; only use it when that is the selected site.
   const apiStation = !!system && (!profile?.solis_station_id || profile.solis_station_id === system.solis_station_id);
 
-  const savings = usePeriod("YTD");
-  const perf = usePeriod("YTD");
+  const savings = usePeriod("1Y");
+  const perf = usePeriod("1Y");
+  // Phone layout: compact chart axes, and the period picker under the range filter (Figma "Homepage" mobile).
+  const phone = useMediaQuery(PHONE_QUERY);
 
   const [daily, setDaily] = useState<DailyReading[] | null>(null);
   const [live, setLive] = useState<LiveData | null>(null);
@@ -140,6 +145,8 @@ export default function HomePage() {
   const life = useMemo(() => (rows ? lifetime(rows, rates, providerId) : null), [rows, rates, providerId]);
   // Which consumption level each month is priced at (MERALCO residential tiers); undefined until the history is in.
   const basis = useMemo(() => (rows ? tierBasis(rows) : undefined), [rows]);
+  // Whether the history holds any battery energy at all; one of the signs a battery exists (see hasBattery).
+  const batteryInHistory = useMemo(() => !!rows?.some((r) => (r.battery_discharge_kwh ?? 0) > 0 || (r.battery_charge_kwh ?? 0) > 0), [rows]);
 
   // A past day's 1D totals come from its settled daily row (what 1W/1M show for that day); the hours
   // only shape the bars. Today, and a day the nightly has not settled yet, stay on the hourly curve.
@@ -153,7 +160,8 @@ export default function HomePage() {
     return rows ? aggregateDaily(rows, perf.period, rates, providerId) : null;
   }, [perf.period, perfHours, rows, rates, providerId, basis]);
 
-  const sinceLabel = life?.since ? dateFromKey(life.since).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }) : null;
+  // "September 2026" in the celebration and share text (full month name; Alden, 2026-11-09).
+  const sinceLabel = life?.since ? dateFromKey(life.since).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) : null;
   const referralEarnings = 0; // Placeholder: no referral-earnings source yet.
 
   if (loading) {
@@ -178,15 +186,21 @@ export default function HomePage() {
 
   const batteryLevel = live?.battery_level ?? latest5?.battery_level ?? null;
   const batteryStatus = live?.battery_status ?? latest5?.battery_status ?? null;
-  const batteryKwh = system.battery_capacity_kwh || detailsFor(system)?.battery?.totalKwh || null;
-  const hasBattery = batteryKwh != null || batteryLevel != null;
+  const leadBattery = detailsFor(system)?.battery ?? null;
+  const batteryKwh = system.battery_capacity_kwh || leadBattery?.totalKwh || null;
+  // A battery exists when the CRM lead or the system row says so, when the inverter reports a charge, or when the
+  // history holds battery energy. An inverter without a battery reports a level of 0 (never null) and 0 kWh, so
+  // neither proves anything on its own: 136 of 741 plants were that case on 2026-11-09. Without a battery the
+  // performance section shows only Grid and Solar (Alden, 2026-11-09).
+  const hasBattery = batteryKwh != null || leadBattery != null || (batteryLevel ?? 0) > 0 || batteryInHistory;
+  const legend = LEGEND.filter((l) => hasBattery || l.key !== "battery");
   const perfHasConsumption = perfAgg ? perfAgg.consumption != null : true;
   const split = perfAgg && perfAgg.consumption ? { grid: perfAgg.grid / perfAgg.consumption, solar: perfAgg.solar / perfAgg.consumption, battery: perfAgg.battery / perfAgg.consumption } : null;
   const selfShare = split ? Math.round((split.solar + split.battery) * 100) : null;
   const perfBounds = periodBounds(perf.period);
   const savingsBounds = periodBounds(savings.period);
-  // Ticks to skip between labels: "Oct 5"-style labels need more room than month names.
-  const xInterval = (p: Period) => (p.range === "1M" ? 4 : p.range === "1D" ? 2 : 0);
+  // Ticks to skip between labels: "Oct 5"-style labels need more room than month names, and a phone's plot is narrower.
+  const xInterval = (p: Period) => (p.range === "1M" ? (phone ? 6 : 4) : p.range === "1D" ? (phone ? 3 : 2) : 0);
   // Axis caption under the bar chart (Figma: "Month"), by what one bar stands for.
   const xLabel = (p: Period) => (p.range === "1D" ? "Hour" : p.range === "1W" || p.range === "1M" ? "Day" : "Month");
 
@@ -218,7 +232,7 @@ export default function HomePage() {
 
         {/* ---------------------------------------------------------- Hero */}
         <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
-          <Card tour="savings">
+          <Card tour="savings" bleed>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-base text-neutral-600">Total savings from Solar</p>
@@ -231,14 +245,16 @@ export default function HomePage() {
                 )}
                 <p className="mt-1 text-sm text-neutral-500">{savingsBounds.subtitle}</p>
               </div>
-              <PeriodNav period={savings.period} onChange={savings.setPeriod} />
+              <div className="hidden sm:block">
+                <PeriodNav period={savings.period} onChange={savings.setPeriod} since={life?.since} />
+              </div>
             </div>
             <div className="mt-6">
               {savingsAgg ? (
                 savingsAgg.days === 0 ? (
                   <EmptyState title="No data for this period" description="Your inverter did not report any production in this period." />
                 ) : (
-                  <SavingsChart points={savingsAgg.points} interval={xInterval(savings.period)} divider={yearDivider(savingsAgg.points)} />
+                  <SavingsChart points={savingsAgg.points} interval={xInterval(savings.period)} divider={yearDivider(savingsAgg.points)} compact={phone} />
                 )
               ) : (
                 <div className="flex h-64 items-center justify-center">
@@ -248,6 +264,10 @@ export default function HomePage() {
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               <Segmented options={RANGES} value={savings.period.range} onChange={savings.setRange} size="sm" />
+            </div>
+            {/* On a phone the period picker sits under the range filter, as in the Figma mobile frame, never beside the title. */}
+            <div className="mt-3 flex justify-center sm:hidden">
+              <PeriodNav period={savings.period} onChange={savings.setPeriod} since={life?.since} />
             </div>
             {/* One short line (the Figma card has none); the full method is explained in the FAQ. */}
             {savingsAgg && savingsAgg.days > 0 && (
@@ -259,7 +279,7 @@ export default function HomePage() {
 
           <div className="flex flex-col gap-4">
             <button onClick={() => setCelebrate("savings")} className="text-left" disabled={!life}>
-              <Card className="transition-shadow duration-200 hover:shadow-sm">
+              <Card bleed className="transition-shadow duration-200 hover:shadow-sm">
                 <div className="flex items-start justify-between">
                   <p className="text-base text-neutral-600">Total savings from solar</p>
                   <CoinsIcon className="h-8 w-8" />
@@ -267,7 +287,7 @@ export default function HomePage() {
                 <p className="mt-2 text-2xl font-semibold text-neutral-900">{life ? php(life.savings) : "—"}</p>
               </Card>
             </button>
-            <div className="rounded-xl bg-brand-chartreuse p-6">
+            <div className="-mx-4 rounded-none bg-brand-chartreuse px-4 py-6 sm:mx-0 sm:rounded-xl sm:px-6">
               <p className="text-lg font-semibold text-brand-blue">Refer and Earn</p>
               <p className="mt-1 text-sm text-brand-dark">{REFERRAL.blurb}</p>
               <Button variant="dark" full className="mt-4" onClick={() => setShare("referral")}>
@@ -276,7 +296,7 @@ export default function HomePage() {
               {profile?.referral_code && <p className="mt-2 text-center text-xs text-brand-dark/80">Your code: {profile.referral_code}</p>}
             </div>
             {/* Referral earnings have no source yet (docs/integrations.md), so this is a muted note under Refer and Earn, as in the Figma "Homepage", not a card that opens anything. */}
-            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4 text-base text-neutral-600">
+            <div className="-mx-4 flex items-start gap-3 rounded-none border border-x-0 border-neutral-200 bg-neutral-50 px-4 py-4 text-base text-neutral-600 sm:mx-0 sm:rounded-xl sm:border-x sm:px-5">
               <Clock className="mt-0.5 h-5 w-5 shrink-0 text-neutral-500" aria-hidden="true" />
               <p>Tracking your referral earnings is coming soon.</p>
             </div>
@@ -286,7 +306,7 @@ export default function HomePage() {
         {/* --------------------------------------------------- Performance */}
         <h2 className="mb-4 mt-10 text-2xl font-semibold text-neutral-900">Your system's performance</h2>
         <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
-          <Card tour="performance">
+          <Card tour="performance" bleed>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-neutral-700">{perfHasConsumption ? "Total consumption" : "Total production"}</p>
@@ -299,14 +319,16 @@ export default function HomePage() {
                 )}
                 <p className="mt-1 text-sm text-neutral-500">{perfBounds.subtitle}</p>
               </div>
-              <PeriodNav period={perf.period} onChange={perf.setPeriod} />
+              <div className="hidden sm:block">
+                <PeriodNav period={perf.period} onChange={perf.setPeriod} since={life?.since} />
+              </div>
             </div>
             <div className="mt-6">
               {perfAgg ? (
                 perfAgg.days === 0 ? (
                   <EmptyState title="No data for this period" description="Your inverter did not report any data in this period." />
                 ) : (
-                  <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} xLabel={xLabel(perf.period)} />
+                  <ConsumptionChart points={perfAgg.points} hasConsumption={perfHasConsumption} hasBattery={hasBattery} interval={xInterval(perf.period)} divider={yearDivider(perfAgg.points)} xLabel={xLabel(perf.period)} compact={phone} />
                 )
               ) : (
                 <div className="flex h-64 items-center justify-center">
@@ -316,7 +338,7 @@ export default function HomePage() {
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-sm text-neutral-600">
               {perfHasConsumption ? (
-                LEGEND.map((l) => (
+                legend.map((l) => (
                   <span key={l.key} className="flex items-center gap-2">
                     <span className="inline-block h-3 w-3 rounded-sm" style={{ background: l.color }} /> {l.label}
                   </span>
@@ -330,10 +352,13 @@ export default function HomePage() {
             <div className="mt-4 flex justify-center">
               <Segmented options={RANGES} value={perf.period.range} onChange={perf.setRange} size="sm" />
             </div>
+            <div className="mt-3 flex justify-center sm:hidden">
+              <PeriodNav period={perf.period} onChange={perf.setPeriod} since={life?.since} />
+            </div>
           </Card>
 
           <div className="flex flex-col gap-4">
-            <Card>
+            <Card bleed>
               {perfAgg && perfHasConsumption ? (
                 <>
                   <p className="text-base text-neutral-600">Total consumption</p>
@@ -343,14 +368,14 @@ export default function HomePage() {
                     <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-neutral-100">
                       <span style={{ width: `${split.grid * 100}%`, background: LEGEND[0].color }} />
                       <span style={{ width: `${split.solar * 100}%`, background: LEGEND[1].color }} />
-                      <span style={{ width: `${split.battery * 100}%`, background: LEGEND[2].color }} />
+                      {hasBattery && <span style={{ width: `${split.battery * 100}%`, background: LEGEND[2].color }} />}
                     </div>
                   )}
                   <ul className="mt-4 flex flex-col gap-2 text-sm">
                     {[
                       { l: LEGEND[0], v: perfAgg.grid },
                       { l: LEGEND[1], v: perfAgg.solar },
-                      { l: LEGEND[2], v: perfAgg.battery },
+                      ...(hasBattery ? [{ l: LEGEND[2], v: perfAgg.battery }] : []),
                     ].map(({ l, v }) => (
                       <li key={l.key} className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-neutral-700">
@@ -362,7 +387,7 @@ export default function HomePage() {
                   </ul>
                   {selfShare != null && (
                     <p className="mt-4 rounded-lg bg-green-50 px-3 py-2.5 text-sm text-green-700">
-                      {selfShare}% of your consumption {perf.period.range === "1D" ? "today came" : "came"} from your solar{perfAgg.battery > 0 ? " and battery" : ""}.
+                      {selfShare}% of your consumption {perf.period.range === "1D" ? "today came" : "came"} from your solar{hasBattery && perfAgg.battery > 0 ? " and battery" : ""}.
                     </p>
                   )}
                 </>
@@ -378,7 +403,7 @@ export default function HomePage() {
               )}
             </Card>
 
-            <Card tour="battery">
+            <Card tour="battery" bleed>
               {hasBattery ? (
                 <>
                   <p className="flex items-center gap-2 text-base font-semibold text-neutral-800">

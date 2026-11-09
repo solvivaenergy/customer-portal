@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Button, Card, ErrorNotice, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
-import { usePortal } from "@/lib/portal";
+import { odooEmail, usePortal } from "@/lib/portal";
 import { createTicket, TICKET_CATEGORIES } from "@/lib/tickets";
 import { invalidateTickets } from "@/lib/useTickets";
 import { env } from "@/lib/env";
@@ -31,8 +31,9 @@ export default function NewTicketPage() {
     setBusy(true);
     setError(null);
     try {
-      await createTicket({ fullName: fullName.trim(), email: profile?.email ?? "", phone: phone.trim(), stationId: system?.solis_station_id ?? profile?.solis_station_id ?? "", category, details: details.trim() });
-      if (profile?.email) invalidateTickets(profile.email);
+      // Filed under the customer's Odoo email so it lands on their Odoo partner, whatever they sign in with.
+      await createTicket({ fullName: fullName.trim(), email: odooEmail(profile), phone: phone.trim(), stationId: system?.solis_station_id ?? profile?.solis_station_id ?? "", category, details: details.trim() });
+      if (odooEmail(profile)) invalidateTickets(odooEmail(profile));
       navigate("/support/success", { state: { kind: "ticket", dryRun: !env.submissionsEnabled } });
     } catch (err) {
       setError((err as Error).message);
@@ -56,8 +57,8 @@ export default function NewTicketPage() {
               <Field label="Contact number">
                 <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09XX XXX XXXX" />
               </Field>
-              <Field label="Email" hint="Tickets are linked to the email you sign in with.">
-                <Input value={profile?.email ?? ""} disabled />
+              <Field label="Email" hint="Tickets are linked to the email on your Solviva account.">
+                <Input value={odooEmail(profile)} disabled />
               </Field>
             </div>
             <Field label="Concern type" required error={errors.category}>

@@ -110,9 +110,21 @@ export function Field({
 /* ------------------------------------------------------------------- Cards */
 
 /** `tour` marks the card for the onboarding tour (lib/tour.tsx), which finds it by data-tour. */
-export function Card({ children, className, padded = true, tour }: { children: ReactNode; className?: string; padded?: boolean; tour?: string }) {
+/**
+ * `bleed`: on a phone the card runs edge to edge (no side border or radius, cancelling the page's 16px gutter)
+ * with 16px side padding, as the Figma "Mobile_Home_1" frame draws every Home card; from `sm` it is a normal card.
+ */
+export function Card({ children, className, padded = true, bleed = false, tour }: { children: ReactNode; className?: string; padded?: boolean; bleed?: boolean; tour?: string }) {
   return (
-    <div data-tour={tour} className={cx("rounded-xl border border-neutral-200 bg-white shadow-xs", padded && "p-6", className)}>
+    <div
+      data-tour={tour}
+      className={cx(
+        "border border-neutral-200 bg-white shadow-xs",
+        bleed ? "-mx-4 rounded-none border-x-0 sm:mx-0 sm:rounded-xl sm:border-x" : "rounded-xl",
+        padded && (bleed ? "px-4 py-6 sm:px-6" : "p-6"),
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -187,7 +199,7 @@ export function Tabs<T extends string>({
 }
 
 /**
- * Segmented pill control (used for Support | PMS and 1D/1W/1M/1Y/YTD). With `stretch` the segments
+ * Segmented pill control (used for Support | PMS and 1D/1W/1M/1Y). With `stretch` the segments
  * share the control's width equally and the control fills whatever width `className` gives it.
  */
 export function Segmented<T extends string>({

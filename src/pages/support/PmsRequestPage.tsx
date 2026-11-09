@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Button, Card, ErrorNotice, Field, Input, PageHeader, Textarea, cx } from "@/components/ui";
-import { usePortal } from "@/lib/portal";
+import { odooEmail, usePortal } from "@/lib/portal";
 import { createMaintenanceRequest, PMS_MIN_LEAD_DAYS, type PmsForm } from "@/lib/pms";
 import { invalidatePms } from "@/lib/usePms";
 import { PMS } from "@/content/contact";
@@ -77,7 +77,7 @@ export default function PmsRequestPage() {
   const [f, setF] = useState<PmsForm>({
     firstName: name.first,
     lastName: name.last,
-    email: profile?.email ?? "",
+    email: odooEmail(profile),
     phone: profile?.phone ?? "",
     siteAddress: system?.address ?? profile?.address ?? "",
     stationId: system?.solis_station_id ?? profile?.solis_station_id ?? "",

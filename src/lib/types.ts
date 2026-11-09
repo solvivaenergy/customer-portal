@@ -1,6 +1,8 @@
 export type Profile = {
   id: string;
-  email: string; // from auth
+  email: string; // the login (Supabase Auth): the customer's Solis Cloud email since 2026-11-09, so one address serves both apps
+  /** The address Odoo knows the customer by (lead / partner email, mirrored nightly); tickets and PMS are looked up with it. */
+  odoo_email: string | null;
   full_name: string | null;
   phone: string | null;
   address: string | null;
@@ -67,6 +69,25 @@ export type HourBucket = {
   battery_level_end: number | null;
   points: number;
   partial: boolean;
+};
+
+/** Today's forecast for the plant's city as Solis Cloud shows it (/app/weather, since 2026-11-09). */
+export type Weather = {
+  station_id: string;
+  city: string;
+  region: string | null;
+  temp_min_c: number;
+  temp_max_c: number;
+  condition: string | null;
+  /** QWeather condition code (100 sunny, 101 cloudy, 3xx rain ...). */
+  condition_code: number | null;
+  /** Between the plant's sunrise and sunset, Manila time; picks the day or night condition. */
+  is_day: boolean;
+  sunrise: string | null;
+  sunset: string | null;
+  /** When Solis last refreshed the forecast (around 05:00 Manila). */
+  updated_at: string | null;
+  source: "solis";
 };
 
 export type LiveData = {

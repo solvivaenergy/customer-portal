@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { Check, Copy, Facebook, Instagram, Linkedin, Send, Twitter } from "lucide-react";
+import { Check, Copy, Facebook, Instagram, Linkedin, Send } from "lucide-react";
 import { Button, Modal, Overlay, cx, usePresence } from "@/components/ui";
+import { XLogoIcon } from "@/components/icons";
 import { php } from "@/lib/format";
 import { REFERRAL } from "@/content/contact";
 
@@ -12,8 +13,8 @@ export function shareText(kind: ShareKind, amount: number, since: string | null,
   return `Yay! I earned ${php(amount, { decimals: 0 })} by helping someone make the switch to solar.${codePart}`;
 }
 
-/** Referral landing page is not built yet — the link goes to the website with the code as a query parameter. */
-export const referralLink = (code: string | null) => `${REFERRAL.landingUrl}${code ? `?ref=${encodeURIComponent(code)}` : ""}`;
+/** The website home page with the code as `Referral` (the parameter the site's inquiry form reads; Alden, 2026-11-09): https://www.solvivaenergy.com/?Referral=CODE */
+export const referralLink = (code: string | null) => `${REFERRAL.landingUrl}/${code ? `?Referral=${encodeURIComponent(code)}` : ""}`;
 
 function CopyField({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -46,7 +47,7 @@ export function ShareModal({ open, onClose, kind, amount, since, code }: { open:
   const targets = [
     { name: "Facebook", icon: <Facebook className="h-5 w-5" />, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}&quote=${enc(text)}` },
     { name: "Instagram", icon: <Instagram className="h-5 w-5" />, href: null },
-    { name: "X", icon: <Twitter className="h-5 w-5" />, href: `https://twitter.com/intent/tweet?text=${enc(text)}&url=${enc(link)}` },
+    { name: "X", icon: <XLogoIcon className="h-4 w-4" />, href: `https://x.com/intent/post?text=${enc(text)}&url=${enc(link)}` },
     { name: "LinkedIn", icon: <Linkedin className="h-5 w-5" />, href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(link)}` },
     { name: "Telegram", icon: <Send className="h-5 w-5" />, href: `https://t.me/share/url?url=${enc(link)}&text=${enc(text)}` },
   ];

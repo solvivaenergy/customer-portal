@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Overlay, cx, usePresence } from "@/components/ui";
 import { TOUR_STEPS, useTour, type TourPlacement, type TourStage } from "@/lib/tour";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { HighlightNote, TipCard, TOUR_CARD_WIDTH, WelcomeCard } from "./TourCards";
 
 /*
@@ -21,18 +22,6 @@ const RING_PAD = 4; // ring and hole sit this far outside the element
 const RING_RADIUS = 12;
 const GAP = 24; // card to element, desktop
 const MARGIN = 16; // card to window edge
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const update = () => setMatches(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, [query]);
-  return matches;
-}
 
 /** Window size, re-read on resize and on the same timer as the targets (a missed resize event must not strand the card). */
 function useWindowSize(active: boolean) {

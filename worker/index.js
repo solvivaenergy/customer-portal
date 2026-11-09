@@ -17,8 +17,8 @@ const ONE_YEAR = "public, max-age=31536000, immutable";
 const REPORT_PATH = `${PREFIX}/csp-report`;
 
 // Everything the app loads or calls: Google Fonts (index.html), Supabase (auth + realtime), the
-// monitoring API, the n8n webhooks and Open-Meteo (weather chip). 'unsafe-inline' for styles only:
-// React and the chart library set inline style attributes.
+// monitoring API (readings and the weather chip) and the n8n webhooks. 'unsafe-inline' for styles
+// only: React and the chart library set inline style attributes.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
@@ -26,8 +26,7 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https://kzsocvzhbgtfyksrjmvk.supabase.co wss://kzsocvzhbgtfyksrjmvk.supabase.co" +
-    " https://monitoring.solvivaenergy.com https://solviva.app.n8n.cloud" +
-    " https://api.open-meteo.com https://geocoding-api.open-meteo.com",
+    " https://monitoring.solvivaenergy.com https://solviva.app.n8n.cloud",
   "worker-src 'self' blob:",
   "frame-ancestors 'self'",
   "base-uri 'self'",

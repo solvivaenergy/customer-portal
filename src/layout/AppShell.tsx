@@ -1,14 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Home, LifeBuoy, Lightbulb, LogOut, MapPin, Menu, Sun, X } from "lucide-react";
+import { Home, LifeBuoy, Lightbulb, LogOut, MapPin, Menu, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { usePortal } from "@/lib/portal";
 import { useTour } from "@/lib/tour";
-import { useWeather } from "@/lib/weather";
+import { temperatureRange, useWeather, weatherIcon } from "@/lib/weather";
 import { Button, cx, usePresence } from "@/components/ui";
 import { initials } from "@/lib/format";
 import { Logo } from "@/components/Logo";
 import { TourOverlay } from "@/components/tour/TourOverlay";
+import { FirstLoginPasswordPrompt } from "@/auth/FirstLoginPasswordPrompt";
 
 /* `tour` marks an element for the onboarding tour (lib/tour.tsx): the overlay finds it by data-tour. */
 function NavItem({ to, icon, label, badge, end, tour }: { to: string; icon: ReactNode; label: string; badge?: number; end?: boolean; tour?: string }) {
@@ -72,14 +73,16 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/* Today's forecast for the selected site as Solis Cloud shows it (lib/weather.ts): low–high and the plant's city. */
 function WeatherChip() {
   const { system, profile } = usePortal();
-  const weather = useWeather(system?.address || profile?.address);
+  const weather = useWeather(system?.solis_station_id ?? profile?.solis_station_id);
   if (!weather) return null;
+  const Icon = weatherIcon(weather.condition_code, weather.is_day);
   return (
-    <div className="flex items-center gap-3 text-sm text-neutral-700">
+    <div className="flex items-center gap-3 text-sm text-neutral-700" title={weather.condition ? `${weather.condition} today in ${weather.city} (Solis Cloud)` : undefined}>
       <span className="flex items-center gap-1.5">
-        <Sun className="h-4 w-4 text-neutral-500" /> {weather.temperatureC}°C
+        <Icon className="h-4 w-4 text-neutral-500" /> {temperatureRange(weather)}
       </span>
       <span className="h-5 w-px bg-neutral-300" />
       <span className="flex items-center gap-1.5">
@@ -136,6 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
+      <FirstLoginPasswordPrompt />
       <TourOverlay />
     </div>
   );
