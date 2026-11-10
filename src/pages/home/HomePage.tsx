@@ -235,7 +235,7 @@ export default function HomePage() {
           <Card tour="savings" bleed>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-base text-neutral-600">Total savings from Solar</p>
+                <p className="text-base text-neutral-600">Savings from solar</p>
                 {savingsAgg ? (
                   <p key={savingsBounds.title} className="anim-fade-in mt-1 text-4xl font-semibold tracking-tight text-neutral-900">
                     {php(savingsAgg.savings)}
@@ -281,7 +281,8 @@ export default function HomePage() {
             <button onClick={() => setCelebrate("savings")} className="text-left" disabled={!life}>
               <Card bleed className="transition-shadow duration-200 hover:shadow-sm">
                 <div className="flex items-start justify-between">
-                  <p className="text-base text-neutral-600">Total savings from solar</p>
+                  {/* "Lifetime savings", not a second "Total savings from solar" beside the period card (Lili, 2026-11-10). */}
+                  <p className="text-base text-neutral-600">Lifetime savings</p>
                   <CoinsIcon className="h-8 w-8" />
                 </div>
                 <p className="mt-2 text-2xl font-semibold text-neutral-900">{life ? php(life.savings) : "—"}</p>

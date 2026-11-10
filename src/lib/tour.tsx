@@ -51,7 +51,7 @@ export const TOUR_STEPS: TourStep[] = [
   env.pmsEnabled
     ? { id: "pms", route: "/support", title: "Book your PMS", body: "Request a schedule for your Preventive Maintenance Service (PMS) so your system keeps running at its best.", placement: "bottom" }
     : { id: "pms", route: "/support", title: "PMS booking is coming soon", body: "Soon you’ll be able to request a Preventive Maintenance Service (PMS) visit right here. Until then, our team can arrange one through Contact support.", placement: "bottom" },
-  { id: "contact", route: "/support", title: "Prefer to talk to someone?", body: "Find Solviva’s phone number and email here so you can reach the team directly.", placement: "bottom" },
+  { id: "contact", route: "/support", title: "Prefer to talk to someone?", body: "Find Solviva’s hotline and email here so you can reach our team directly.", placement: "bottom" },
   { id: "profile", route: "/support", title: "Your account, your system", body: "View your account info and system details here.", placement: "right", drawer: true },
 ];
 

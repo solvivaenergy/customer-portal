@@ -1,16 +1,16 @@
-import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { Check, Copy, Facebook, Instagram, Linkedin, Send } from "lucide-react";
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Check, Copy, Facebook } from "lucide-react";
 import { Button, Modal, Overlay, cx, usePresence } from "@/components/ui";
-import { XLogoIcon } from "@/components/icons";
+import { MessengerLogoIcon, ViberLogoIcon } from "@/components/icons";
 import { php } from "@/lib/format";
 import { REFERRAL } from "@/content/contact";
 
 export type ShareKind = "savings" | "referral";
 
+/** The referral line is CX's wording (Lili, 2026-11-10); the savings line is unchanged. */
 export function shareText(kind: ShareKind, amount: number, since: string | null, code: string | null) {
-  const codePart = code ? ` Use my referral code ${code} to sign up.` : "";
-  if (kind === "savings") return `Yay! I saved ${php(amount)} since switching to solar${since ? ` in ${since}` : ""}.${codePart}`;
-  return `Yay! I earned ${php(amount, { decimals: 0 })} by helping someone make the switch to solar.${codePart}`;
+  if (kind === "savings") return `Yay! I saved ${php(amount)} since switching to solar${since ? ` in ${since}` : ""}.${code ? ` Use my referral code ${code} to sign up.` : ""}`;
+  return `I switched to solar with Solviva. ${code ? `Use my referral code ${code} to book` : "Book"} your free solar consultation and site assessment.`;
 }
 
 /** The website home page with the code as `Referral` (the parameter the site's inquiry form reads; Alden, 2026-11-09): https://www.solvivaenergy.com/?Referral=CODE */
@@ -40,17 +40,42 @@ function CopyField({ value, label }: { value: string; label: string }) {
   );
 }
 
+/** Phones and tablets open the Messenger and Viber apps through their URL schemes; a desktop browser cannot. */
+const onMobile = () => typeof navigator !== "undefined" && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.userAgent.includes("Mac") && navigator.maxTouchPoints > 1));
+
+type ShareTarget = { name: string; icon: ReactNode; href: string | null; app?: boolean; fallback?: () => void };
+
+/**
+ * Messenger, Facebook and Viber: the channels this audience uses and that can carry the message
+ * (Lili, 2026-11-10; LinkedIn, X, Telegram and Instagram were dropped). Messenger pre-fills the link
+ * only, which carries the code. On a desktop there is no app to open and Facebook's Send dialog would
+ * need a Meta developer app (skipped, Alden 2026-11-10: it still would not carry the text), so the
+ * button copies the message and opens messenger.com to paste it in.
+ */
+function shareTargets(text: string, link: string): ShareTarget[] {
+  const enc = encodeURIComponent;
+  const mobile = onMobile();
+  const message = `${text} ${link}`;
+  return [
+    {
+      name: "Messenger",
+      icon: <MessengerLogoIcon className="h-5 w-5" />,
+      href: mobile ? `fb-messenger://share?link=${enc(link)}` : null,
+      app: true,
+      fallback: () => {
+        void navigator.clipboard.writeText(message);
+        window.open("https://www.messenger.com/", "_blank", "noopener");
+      },
+    },
+    { name: "Facebook", icon: <Facebook className="h-5 w-5" />, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}&quote=${enc(text)}` },
+    { name: "Viber", icon: <ViberLogoIcon className="h-5 w-5" />, href: `viber://forward?text=${enc(message)}`, app: true },
+  ];
+}
+
 export function ShareModal({ open, onClose, kind, amount, since, code }: { open: boolean; onClose: () => void; kind: ShareKind; amount: number; since: string | null; code: string | null }) {
   const text = shareText(kind, amount, since, code);
   const link = referralLink(code);
-  const enc = encodeURIComponent;
-  const targets = [
-    { name: "Facebook", icon: <Facebook className="h-5 w-5" />, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}&quote=${enc(text)}` },
-    { name: "Instagram", icon: <Instagram className="h-5 w-5" />, href: null },
-    { name: "X", icon: <XLogoIcon className="h-4 w-4" />, href: `https://x.com/intent/post?text=${enc(text)}&url=${enc(link)}` },
-    { name: "LinkedIn", icon: <Linkedin className="h-5 w-5" />, href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(link)}` },
-    { name: "Telegram", icon: <Send className="h-5 w-5" />, href: `https://t.me/share/url?url=${enc(link)}&text=${enc(text)}` },
-  ];
+  const targets = shareTargets(text, link);
   const nativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
   return (
     <Modal open={open} onClose={onClose} title="Share">
@@ -62,11 +87,12 @@ export function ShareModal({ open, onClose, kind, amount, since, code }: { open:
           <div className="flex items-center gap-2">
             {targets.map((t) =>
               t.href ? (
-                <a key={t.name} href={t.href} target="_blank" rel="noreferrer" title={t.name} className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-50">
+                /* App links (fb-messenger://, viber://) must open in this tab: a new tab stays blank on iOS. */
+                <a key={t.name} href={t.href} target={t.app ? undefined : "_blank"} rel="noreferrer" title={t.name} className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-50">
                   {t.icon}
                 </a>
               ) : (
-                <button key={t.name} type="button" title={`${t.name}: copy the text and paste it in the app`} onClick={() => navigator.clipboard.writeText(`${text} ${link}`)} className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-50">
+                <button key={t.name} type="button" title={`${t.name}: the message is copied, paste it in the chat`} onClick={t.fallback} className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 hover:bg-neutral-50">
                   {t.icon}
                 </button>
               ),

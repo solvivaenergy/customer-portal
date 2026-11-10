@@ -105,7 +105,7 @@ function TourDemo({ initial }: { initial: TourStage }) {
             <p className="mt-1 mb-6 text-base text-neutral-500">Track and manage your solar savings</p>
             <div className="grid gap-6 lg:grid-cols-[1fr_304px]">
               <Card tour="savings">
-                <p className="text-base text-neutral-600">Total savings from Solar</p>
+                <p className="text-base text-neutral-600">Savings from solar</p>
                 <p className="mt-1 text-4xl font-semibold text-neutral-900">₱83,204.21</p>
                 <div className="mt-6">
                   <SavingsChart points={SAMPLE} divider={yearDivider(SAMPLE)} />
@@ -113,7 +113,7 @@ function TourDemo({ initial }: { initial: TourStage }) {
               </Card>
               <div className="flex flex-col gap-4">
                 <Card>
-                  <p className="text-base text-neutral-600">Total savings from solar</p>
+                  <p className="text-base text-neutral-600">Lifetime savings</p>
                   <p className="mt-2 text-2xl font-semibold text-neutral-900">₱83,204.21</p>
                 </Card>
                 <div className="rounded-xl bg-brand-chartreuse p-6">
@@ -317,7 +317,7 @@ export default function DevPreviewPage() {
         <div className="flex w-[304px] flex-col gap-4">
           <Card>
             <div className="flex items-start justify-between">
-              <p className="text-base text-neutral-600">Total savings from solar</p>
+              <p className="text-base text-neutral-600">Lifetime savings</p>
               <CoinsIcon className="h-8 w-8" />
             </div>
             <p className="mt-2 text-2xl font-semibold text-neutral-900">₱83,204.21</p>

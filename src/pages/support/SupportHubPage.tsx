@@ -47,13 +47,13 @@ function ComingSoonCard({ icon, title, description, tour }: { icon: React.ReactN
 export function SupportActionCards() {
   return (
     <div className="grid gap-5 md:grid-cols-3">
-      <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="For technical and non-technical concerns, submit a ticket" tour="ticket" />
+      <ActionCard to="/support/tickets/new" icon={<SupportTicketIcon className="h-12 w-12" />} title="Submit a support ticket" description="Submit a ticket for any concern about your system or account." tour="ticket" />
       {env.pmsEnabled ? (
         <ActionCard to="/support/pms" icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Request to schedule your preventive maintenance service for your system" tour="pms" />
       ) : (
         <ComingSoonCard icon={<PmsToolsIcon className="h-12 w-12" />} title="Request PMS" description="Scheduling your preventive maintenance service from the portal is coming soon." tour="pms" />
       )}
-      <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Reach out to our hotline and email for assistance." tour="contact" />
+      <ActionCard to="/support/contact" icon={<PhoneCallIcon className="h-12 w-12" />} title="Contact support" description="Call or email our team for help." tour="contact" />
     </div>
   );
 }

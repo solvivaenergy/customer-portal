@@ -147,22 +147,30 @@ export async function fetchMyTickets(me: OdooIdentity): Promise<Ticket[]> {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Concern types offered on the ticket form. `type` decides which Odoo path n8n takes. */
-/* Same values the mobile app and the website form send (Odoo's "Detailed-Concern"). */
+/** The concern group whose choice shows the call-the-hotline notice on the form (smoke, sparks, shock). */
+export const SAFETY_GROUP = "Safety";
+
+/**
+ * Concern types offered on the ticket form, in CX's wording (sentence case, "(warranty claim)",
+ * "Electric shock": Lili, 2026-11-10). The text is sent as `Detailed-Concern` / `Subject`; n8n routes
+ * on `ticket-type` only and Odoo keeps it as free text in the ticket description ("Concern Name: …",
+ * no selection field; the tags are set by CX by hand), so the wording is free to change. The website's
+ * own forms use a longer, differently worded list. `type` decides which Odoo path n8n takes.
+ */
 export const TICKET_CATEGORIES: { value: string; group: string; type: "technical" | "general" }[] = [
-  { value: "General Inquiry", group: "General", type: "general" },
-  { value: "Service Availability", group: "General", type: "general" },
-  { value: "Payment Options", group: "General", type: "general" },
+  { value: "General inquiry", group: "General", type: "general" },
+  { value: "Service availability", group: "General", type: "general" },
+  { value: "Payment options", group: "General", type: "general" },
   { value: "Low energy output", group: "System performance", type: "technical" },
   { value: "Online monitoring is not working", group: "System performance", type: "technical" },
-  { value: "Unusual signs on inverter and components (heat, smoke, discoloration, sparks)", group: "Safety", type: "technical" },
-  { value: "Electrical shocks", group: "Safety", type: "technical" },
-  { value: "Structural or roof damage / leak", group: "Safety", type: "technical" },
-  { value: "Wiring or connection faults / loose connections", group: "Safety", type: "technical" },
-  { value: "Panel damage – Warranty Claim", group: "Warranty", type: "technical" },
-  { value: "Inverter issues – Warranty Claim", group: "Warranty", type: "technical" },
-  { value: "Battery problems – Warranty Claim", group: "Warranty", type: "technical" },
-  { value: "Other workmanship issues – Warranty Claim", group: "Warranty", type: "technical" },
+  { value: "Unusual signs on inverter and components (heat, smoke, discoloration, sparks)", group: SAFETY_GROUP, type: "technical" },
+  { value: "Electric shock", group: SAFETY_GROUP, type: "technical" },
+  { value: "Structural or roof damage / leak", group: SAFETY_GROUP, type: "technical" },
+  { value: "Wiring or connection faults / loose connections", group: SAFETY_GROUP, type: "technical" },
+  { value: "Panel damage (warranty claim)", group: "Warranty", type: "technical" },
+  { value: "Inverter issues (warranty claim)", group: "Warranty", type: "technical" },
+  { value: "Battery problems (warranty claim)", group: "Warranty", type: "technical" },
+  { value: "Other workmanship issues (warranty claim)", group: "Warranty", type: "technical" },
 ];
 
 export type NewTicket = {
