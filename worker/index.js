@@ -26,6 +26,10 @@ const REFER_PATH = `${PREFIX}/refer/`;
 // Card wording from CX's share brief (2026-11-12). The code is the only variable part.
 const SHARE_TITLE = "Switch to solar with Solviva";
 const shareDescription = (code) => `Book your free solar consultation and site assessment. Referral code ${code}`;
+// Facebook shows the description only on a card that has an image: without one the card is the title alone.
+// The 320px brand tile (public/brand) gives the thumbnail-beside-text card. An image 600px wide or more
+// would switch Facebook to its large layout, picture on top.
+const SHARE_IMAGE = { url: `https://${CANONICAL_HOST}${PREFIX}/brand/solviva-tile-lime.jpg`, size: 320, alt: "Solviva, an AboitizPower company" };
 // Referral codes are the Odoo lead codes: letters (ñ included), digits and - . ( ). Anything else is not a
 // code, so nobody can put their own wording on a solvivaenergy.com card.
 const REFERRAL_CODE = /^[\p{L}\p{N}().-]{1,40}$/u;
@@ -61,9 +65,15 @@ function referralShare(request, url) {
 <meta property="og:url" content="${self}">
 <meta property="og:title" content="${SHARE_TITLE}">
 <meta property="og:description" content="${description}">
+<meta property="og:image" content="${SHARE_IMAGE.url}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="${SHARE_IMAGE.size}">
+<meta property="og:image:height" content="${SHARE_IMAGE.size}">
+<meta property="og:image:alt" content="${SHARE_IMAGE.alt}">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${SHARE_TITLE}">
 <meta name="twitter:description" content="${description}">
+<meta name="twitter:image" content="${SHARE_IMAGE.url}">
 </head>
 <body>
 <p><a href="${escapeHtml(target)}">${SHARE_TITLE}</a></p>
