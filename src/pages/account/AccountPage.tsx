@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, ExternalLink, FileText, LifeBuoy, LogOut, ScrollText, ShieldCheck } from "lucide-react";
+import { ChevronDown, CircleCheck, ExternalLink, FileText, LifeBuoy, LogOut, ScrollText, ShieldCheck } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Collapse, ErrorNotice, Input, Modal, PageHeader, Select, Tabs } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
@@ -78,7 +78,7 @@ function ProfileTab() {
     try {
       await updateProfile({ full_name: fullName.trim() || null, phone: phone.trim() || null, address: address.trim() || null });
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 5000);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -114,12 +114,16 @@ function ProfileTab() {
             </Button>
           </div>
         </Row>
+        {saved && (
+          <div role="status" className="anim-fade-up mt-6 flex items-center gap-3 rounded-lg border border-green-700/20 bg-green-50 px-4 py-3 text-base font-medium text-green-700">
+            <CircleCheck className="h-5 w-5 shrink-0" aria-hidden="true" /> Your changes have been saved.
+          </div>
+        )}
         <div className="flex items-center justify-between pt-6">
           <Button type="button" variant="ghost" onClick={() => setLogoutOpen(true)}>
             <LogOut className="h-4 w-4" /> Log out
           </Button>
           <div className="flex items-center gap-3">
-            {saved && <span className="anim-fade-in text-sm text-green-700">Saved</span>}
             <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
               Back
             </Button>

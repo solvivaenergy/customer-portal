@@ -60,11 +60,14 @@ export const phpShort = (value: number) => {
   return `₱${Math.round(value).toLocaleString()}`;
 };
 
-export const kwh = (value: number, decimals = 0) =>
-  `${value.toLocaleString("en-PH", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} kWh`;
+/** A value that rounds to zero prints as "0", never "0.0" or "-0.0" (review 2026-11-12). */
+export const num = (value: number, decimals = 0) => {
+  const text = value.toLocaleString("en-PH", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return /^-?0(\.0+)?$/.test(text) ? "0" : text;
+};
 
-export const num = (value: number, decimals = 0) =>
-  value.toLocaleString("en-PH", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+/** Energy figures carry one decimal everywhere on the site (review 2026-11-12). */
+export const kwh = (value: number, decimals = 1) => `${num(value, decimals)} kWh`;
 
 export const longDate = (d: Date | string) => format(typeof d === "string" ? new Date(d) : d, "MMMM d, yyyy");
 export const shortDate = (d: Date | string) => format(typeof d === "string" ? new Date(d) : d, "MMM d, yyyy");

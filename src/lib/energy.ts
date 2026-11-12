@@ -125,15 +125,16 @@ export function periodBounds(p: Period) {
       const start = manilaDateKey(new Date(Date.UTC(y, m, 1, 4)));
       const end = manilaDateKey(new Date(Date.UTC(y, m + 1, 0, 4)));
       const label = anchor.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-      return { start, end, title: label, subtitle: `${fmtShort(start)} – ${fmtShort(end)}, ${y}`, canNav: true };
+      return { start, end, title: label, subtitle: `${fmtLong(start)} – ${fmtLong(end)}`, canNav: true };
     }
     case "1Y": {
       // The anchor's calendar year; the current year runs up to today.
       const t = dateFromKey(today);
       const current = y >= t.getUTCFullYear();
-      const lastMonth = current ? t.getUTCMonth() : 11;
-      const subtitle = lastMonth === 0 ? `Jan ${y}` : `Jan – ${MONTHS[lastMonth]} ${y}`;
-      return { start: `${y}-01-01`, end: current ? today : `${y}-12-31`, title: String(y), subtitle, canNav: true };
+      const start = `${y}-01-01`;
+      const end = current ? today : `${y}-12-31`;
+      // Full dates as for 1D and 1W: "January 1, 2026 – November 12, 2026" (review 2026-11-12).
+      return { start, end, title: String(y), subtitle: `${fmtLong(start)} – ${fmtLong(end)}`, canNav: true };
     }
   }
 }
