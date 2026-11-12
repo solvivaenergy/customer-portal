@@ -5,6 +5,7 @@ import { CoinsIcon, HandshakeIcon, PhoneCallIcon, PmsToolsIcon, SupportTicketIco
 import { Badge, Card, Segmented, Tabs } from "@/components/ui";
 import { yearDivider, type SeriesPoint } from "@/lib/energy";
 import { ConsumptionChart, SavingsChart } from "./home/charts";
+import { ChangePasswordView } from "./auth/ChangePasswordPage";
 import { CelebrationOverlay } from "./home/share";
 import { PmsSteps } from "./support/PmsRequestPage";
 import { SupportActionCards } from "./support/SupportHubPage";
@@ -304,6 +305,8 @@ export default function DevPreviewPage() {
     const kind = screen === "celebrate" ? "savings" : "referral";
     return <CelebrationOverlay open onClose={() => undefined} kind={kind} amount={kind === "savings" ? 83204.21 : 10000} since="January 2025" onShare={() => undefined} />;
   }
+  if (screen === "change-password")
+    return <ChangePasswordView email="juan.delacruz@example.com" isTemporaryPassword={(p) => p === "temporary1"} onSave={async () => undefined} onLogOut={() => undefined} />;
   if (screen === "mobile") return <MobilePieces />;
   if (screen === "ticket-detail") return <TicketDetailPieces />;
   if (screen === "tour") return <TourPieces />;

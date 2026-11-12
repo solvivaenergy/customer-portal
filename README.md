@@ -40,7 +40,7 @@ src/
   lib/tickets.ts             n8n ticket list / ticket + PMS intake
   lib/weather.ts             weather chip: the plant's Solis Cloud forecast via /app/weather (low–high, city, condition icon)
   layout/                    sidebar shell, breadcrumb
-  pages/auth/                login, forgot password, reset password (Figma "Log in" frames, revised 2026-10-23)
+  pages/auth/                login, forgot password, reset password (Figma "Log in" frames, revised 2026-10-23), mandatory first-login "Create a new password"
   pages/home/                dashboard: hero savings, performance, battery, share/celebration
   pages/support/             hub + My activities, new ticket, ticket detail, contact, PMS intro + wizard
   pages/account/             profile, system details, FAQs, terms, privacy (documents tab hidden for now)

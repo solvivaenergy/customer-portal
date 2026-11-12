@@ -5,6 +5,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 const DevPreviewPage = lazy(() => import("./pages/DevPreviewPage"));
 import { useAuth } from "./auth/AuthProvider";
 import { env } from "./lib/env";
+import { mustChangePassword } from "./lib/firstLogin";
 import { PortalProvider } from "./lib/portal";
 import { TourProvider } from "./lib/tour";
 import { AppShell } from "./layout/AppShell";
@@ -12,6 +13,7 @@ import { Spinner } from "./components/ui";
 import LoginPage from "./pages/auth/LoginPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import ChangePasswordPage from "./pages/auth/ChangePasswordPage";
 import HomePage from "./pages/home/HomePage";
 import SupportHubPage from "./pages/support/SupportHubPage";
 import NewTicketPage from "./pages/support/NewTicketPage";
@@ -37,6 +39,8 @@ function RequireAuth() {
   if (loading) return <FullScreenSpinner />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   if (recovering && location.pathname !== "/reset-password") return <Navigate to="/reset-password" replace />;
+  // First login: no portal page opens until the temporary password is replaced (lib/firstLogin.ts).
+  if (mustChangePassword(user)) return <Navigate to="/change-password" state={{ from: location.pathname }} replace />;
   return (
     <PortalProvider>
       <TourProvider>
@@ -64,6 +68,8 @@ export default function App() {
       </Route>
       {/* Reachable both from the recovery link (session present, recovering) and when signed in. */}
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* First login on the temporary password; the page sends everyone else away. */}
+      <Route path="/change-password" element={<ChangePasswordPage />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/" element={<HomePage />} />

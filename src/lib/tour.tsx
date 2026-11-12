@@ -120,7 +120,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // First login: once the Home page has its data, offer the tour (only accounts with a system — the
   // welcome says "your solar is live"). Any answer is recorded, so this shows once per account.
   useEffect(() => {
-    // The first-login password prompt (auth/FirstLoginPasswordPrompt) goes first; the welcome waits for its answer.
+    // The first-login password change (pages/auth/ChangePasswordPage) goes first; the welcome waits for it.
     if (welcomed.current || !user || mustChangePassword(user) || loading || error || !system || location.pathname !== "/") return;
     if (readRecord(user)) return;
     const t = setTimeout(() => {

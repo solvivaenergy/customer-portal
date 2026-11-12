@@ -9,7 +9,6 @@ import { Button, cx, usePresence } from "@/components/ui";
 import { initials } from "@/lib/format";
 import { Logo } from "@/components/Logo";
 import { TourOverlay } from "@/components/tour/TourOverlay";
-import { FirstLoginPasswordPrompt } from "@/auth/FirstLoginPasswordPrompt";
 
 /* `tour` marks an element for the onboarding tour (lib/tour.tsx): the overlay finds it by data-tour. */
 function NavItem({ to, icon, label, badge, end, tour }: { to: string; icon: ReactNode; label: string; badge?: number; end?: boolean; tour?: string }) {
@@ -139,7 +138,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <FirstLoginPasswordPrompt />
       <TourOverlay />
     </div>
   );
