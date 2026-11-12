@@ -10,11 +10,67 @@
  * Content-Security-Policy is report-only for now: nothing is blocked, violations are POSTed by the
  * browser to /mysolviva/csp-report and logged (Workers & Pages → customer-portal → Logs). Once real
  * traffic has produced no genuine violations, rename the header to Content-Security-Policy to enforce it.
+ *
+ * /mysolviva/refer/<code> is the link the portal posts to Facebook (src/pages/home/share.tsx). A link
+ * preview is built from the Open Graph tags of the posted URL, and the website's home page has one fixed
+ * set whose canonical URL drops ?Referral=, so a post of the referral link itself shows the home page's
+ * card and loses the code. This path answers preview crawlers with a card that names the code and sends
+ * everyone else on to the referral link, https://www.solvivaenergy.com/?Referral=<code>.
  */
 const PREFIX = "/mysolviva";
 const CANONICAL_HOST = "www.solvivaenergy.com";
 const ONE_YEAR = "public, max-age=31536000, immutable";
 const REPORT_PATH = `${PREFIX}/csp-report`;
+const REFER_PATH = `${PREFIX}/refer/`;
+
+// Card wording from CX's share brief (2026-11-12). The code is the only variable part.
+const SHARE_TITLE = "Switch to solar with Solviva";
+const shareDescription = (code) => `Book your free solar consultation and site assessment. Referral code ${code}`;
+// Referral codes are the Odoo lead codes: letters (ñ included), digits and - . ( ). Anything else is not a
+// code, so nobody can put their own wording on a solvivaenergy.com card.
+const REFERRAL_CODE = /^[\p{L}\p{N}().-]{1,40}$/u;
+// The programs that fetch a page to draw its preview card. They read the tags; they are not redirected.
+const PREVIEW_CRAWLER = /facebookexternalhit|facebot|meta-externalagent|twitterbot|linkedinbot|whatsapp|viber|telegrambot|slackbot|discordbot|skypeuripreview/i;
+
+const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+function referralShare(request, url) {
+  const home = `https://${CANONICAL_HOST}/`;
+  let code = "";
+  try {
+    code = decodeURIComponent(url.pathname.slice(REFER_PATH.length)).normalize("NFC");
+  } catch {
+    // Malformed escape: treated as no code.
+  }
+  if (!REFERRAL_CODE.test(code)) return Response.redirect(home, 302);
+  const target = `${home}?Referral=${encodeURIComponent(code)}`;
+  if (!PREVIEW_CRAWLER.test(request.headers.get("User-Agent") || "")) {
+    return new Response(null, { status: 302, headers: { Location: target, "Cache-Control": "no-store", Vary: "User-Agent" } });
+  }
+  const self = `https://${CANONICAL_HOST}${REFER_PATH}${encodeURIComponent(code)}`;
+  const description = escapeHtml(shareDescription(code));
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${SHARE_TITLE}</title>
+<meta name="description" content="${description}">
+<meta name="robots" content="noindex">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Solviva Energy">
+<meta property="og:url" content="${self}">
+<meta property="og:title" content="${SHARE_TITLE}">
+<meta property="og:description" content="${description}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${SHARE_TITLE}">
+<meta name="twitter:description" content="${description}">
+</head>
+<body>
+<p><a href="${escapeHtml(target)}">${SHARE_TITLE}</a></p>
+</body>
+</html>`;
+  return withSecurityHeaders(new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", Vary: "User-Agent" } }));
+}
 
 // Everything the app loads or calls: Google Fonts (index.html), Supabase (auth + realtime), the
 // monitoring API (readings and the weather chip) and the n8n webhooks. 'unsafe-inline' for styles
@@ -87,6 +143,8 @@ export default {
       return Response.redirect(url.href, 301);
     }
     if (!url.pathname.startsWith(`${PREFIX}/`)) return new Response("Not found", { status: 404 });
+
+    if (url.pathname.startsWith(REFER_PATH)) return referralShare(request, url);
 
     if (url.pathname === REPORT_PATH) {
       if (request.method !== "POST") return new Response("Not found", { status: 404 });

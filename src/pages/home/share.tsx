@@ -16,6 +16,14 @@ export function shareText(kind: ShareKind, amount: number, since: string | null,
 /** The website home page with the code as `Referral` (the parameter the site's inquiry form reads; Alden, 2026-11-09): https://www.solvivaenergy.com/?Referral=CODE */
 export const referralLink = (code: string | null) => `${REFERRAL.landingUrl}/${code ? `?Referral=${encodeURIComponent(code)}` : ""}`;
 
+/**
+ * What a Facebook post links to: the Worker's /mysolviva/refer/CODE (worker/index.js), which gives Facebook a
+ * card titled "Switch to solar with Solviva" that names the code, and sends whoever clicks it to the
+ * referral link above. Posting the referral link itself shows the website home page's card without the
+ * code. Always the production host: the GitHub Pages demo has no Worker.
+ */
+export const facebookShareLink = (code: string | null) => (code ? `${REFERRAL.landingUrl}/mysolviva/refer/${encodeURIComponent(code)}` : referralLink(code));
+
 function CopyField({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -52,7 +60,7 @@ type ShareTarget = { name: string; icon: ReactNode; href: string | null; app?: b
  * need a Meta developer app (skipped, Alden 2026-11-10: it still would not carry the text), so the
  * button copies the message and opens messenger.com to paste it in.
  */
-function shareTargets(text: string, link: string): ShareTarget[] {
+function shareTargets(text: string, link: string, facebookLink: string): ShareTarget[] {
   const enc = encodeURIComponent;
   const mobile = onMobile();
   const message = `${text} ${link}`;
@@ -67,7 +75,7 @@ function shareTargets(text: string, link: string): ShareTarget[] {
         window.open("https://www.messenger.com/", "_blank", "noopener");
       },
     },
-    { name: "Facebook", icon: <Facebook className="h-5 w-5" />, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(link)}&quote=${enc(text)}` },
+    { name: "Facebook", icon: <Facebook className="h-5 w-5" />, href: `https://www.facebook.com/sharer/sharer.php?u=${enc(facebookLink)}&quote=${enc(text)}` },
     { name: "Viber", icon: <ViberLogoIcon className="h-5 w-5" />, href: `viber://forward?text=${enc(message)}`, app: true },
   ];
 }
@@ -75,7 +83,7 @@ function shareTargets(text: string, link: string): ShareTarget[] {
 export function ShareModal({ open, onClose, kind, amount, since, code }: { open: boolean; onClose: () => void; kind: ShareKind; amount: number; since: string | null; code: string | null }) {
   const text = shareText(kind, amount, since, code);
   const link = referralLink(code);
-  const targets = shareTargets(text, link);
+  const targets = shareTargets(text, link, facebookShareLink(code));
   const nativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
   return (
     <Modal open={open} onClose={onClose} title="Share">
