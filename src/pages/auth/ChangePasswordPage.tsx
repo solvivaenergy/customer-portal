@@ -1,7 +1,8 @@
 import { useId, useState, type FormEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { Circle, CircleCheck, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
+import { LogoutConfirm } from "@/auth/LogoutConfirm";
 import { mustChangePassword } from "@/lib/firstLogin";
 import { Button, cx, ErrorNotice, Input, Spinner } from "@/components/ui";
 import { AuthLayout } from "./AuthLayout";
@@ -64,9 +65,9 @@ function PasswordField({
  * password clears the flag and lets the customer in; the one other way out is logging out.
  */
 export default function ChangePasswordPage() {
-  const { user, loading, recovering, replaceTemporaryPassword, isTemporaryPassword, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading, recovering, replaceTemporaryPassword, isTemporaryPassword } = useAuth();
   const location = useLocation();
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   if (loading)
     return (
@@ -82,15 +83,15 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <ChangePasswordView
+    <>
+      <ChangePasswordView
       email={user.email ?? ""}
       isTemporaryPassword={isTemporaryPassword}
       onSave={replaceTemporaryPassword} // the cleared flag re-renders this page into the redirect above
-      onLogOut={async () => {
-        await signOut();
-        navigate("/login", { replace: true });
-      }}
-    />
+      onLogOut={() => setLogoutOpen(true)}
+      />
+      <LogoutConfirm open={logoutOpen} onClose={() => setLogoutOpen(false)} />
+    </>
   );
 }
 

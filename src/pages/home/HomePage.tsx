@@ -194,6 +194,8 @@ export default function HomePage() {
   // performance section shows only Grid and Solar (Alden, 2026-11-09).
   const hasBattery = batteryKwh != null || leadBattery != null || (batteryLevel ?? 0) > 0 || batteryInHistory;
   const legend = LEGEND.filter((l) => hasBattery || l.key !== "battery");
+  // By name, for the consumption card: LEGEND itself is in chart order (Battery, Solar, Grid).
+  const series = Object.fromEntries(LEGEND.map((l) => [l.key, l])) as Record<"grid" | "solar" | "battery", (typeof LEGEND)[number]>;
   const perfHasConsumption = perfAgg ? perfAgg.consumption != null : true;
   const split = perfAgg && perfAgg.consumption ? { grid: perfAgg.grid / perfAgg.consumption, solar: perfAgg.solar / perfAgg.consumption, battery: perfAgg.battery / perfAgg.consumption } : null;
   const selfShare = split ? Math.round((split.solar + split.battery) * 100) : null;
@@ -220,7 +222,8 @@ export default function HomePage() {
               ))}
             </Select>
           ) : (
-            <span className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-xs">{system.solis_station_id ?? system.system_name ?? "—"}</span>
+            // One station: plain read-only text, nothing that looks pressable (review 2026-11-12).
+            <span className="text-base font-medium text-neutral-900">{system.solis_station_id ?? system.system_name ?? "—"}</span>
           )}
         </div>
 
@@ -367,16 +370,16 @@ export default function HomePage() {
                   <p className="text-sm text-neutral-500">{perfBounds.subtitle.replace(/^Since /, "since ")}</p>
                   {split && (
                     <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-neutral-100">
-                      <span style={{ width: `${split.grid * 100}%`, background: LEGEND[0].color }} />
-                      <span style={{ width: `${split.solar * 100}%`, background: LEGEND[1].color }} />
-                      {hasBattery && <span style={{ width: `${split.battery * 100}%`, background: LEGEND[2].color }} />}
+                      <span style={{ width: `${split.grid * 100}%`, background: series.grid.color }} />
+                      <span style={{ width: `${split.solar * 100}%`, background: series.solar.color }} />
+                      {hasBattery && <span style={{ width: `${split.battery * 100}%`, background: series.battery.color }} />}
                     </div>
                   )}
                   <ul className="mt-4 flex flex-col gap-2 text-sm">
                     {[
-                      { l: LEGEND[0], v: perfAgg.grid },
-                      { l: LEGEND[1], v: perfAgg.solar },
-                      ...(hasBattery ? [{ l: LEGEND[2], v: perfAgg.battery }] : []),
+                      { l: series.grid, v: perfAgg.grid },
+                      { l: series.solar, v: perfAgg.solar },
+                      ...(hasBattery ? [{ l: series.battery, v: perfAgg.battery }] : []),
                     ].map(({ l, v }) => (
                       <li key={l.key} className="flex items-center justify-between">
                         <span className="flex items-center gap-2 text-neutral-700">

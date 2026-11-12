@@ -5,6 +5,7 @@ import { Breadcrumb } from "@/layout/Breadcrumb";
 import { Badge, Button, Collapse, ErrorNotice, Input, Modal, PageHeader, Select, Tabs } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
 import { useAuth } from "@/auth/AuthProvider";
+import { LogoutConfirm } from "@/auth/LogoutConfirm";
 import { env } from "@/lib/env";
 import { longDate, num } from "@/lib/format";
 import { FAQ_CATEGORIES, FAQS, type FaqBlock } from "@/content/faqs";
@@ -50,7 +51,7 @@ function Row({ label, children, hint }: { label: string; children: ReactNode; hi
 
 function ProfileTab() {
   const { profile, updateProfile } = usePortal();
-  const { changePassword, signOut } = useAuth();
+  const { changePassword } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState(profile?.full_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
@@ -130,23 +131,7 @@ function ProfileTab() {
       </Section>
 
       <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} onChange={changePassword} />
-      <Modal open={logoutOpen} onClose={() => setLogoutOpen(false)} title="Log out">
-        <p className="text-sm text-neutral-600">Are you sure you want to log out?</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => setLogoutOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={async () => {
-              await signOut();
-              navigate("/login", { replace: true });
-            }}
-          >
-            Log out
-          </Button>
-        </div>
-      </Modal>
+      <LogoutConfirm open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </form>
   );
 }

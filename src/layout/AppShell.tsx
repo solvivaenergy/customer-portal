@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import { Home, LifeBuoy, Lightbulb, LogOut, MapPin, Menu, X } from "lucide-react";
-import { useAuth } from "@/auth/AuthProvider";
+import { LogoutConfirm } from "@/auth/LogoutConfirm";
 import { usePortal } from "@/lib/portal";
 import { useTour } from "@/lib/tour";
 import { temperatureRange, useWeather, weatherIcon } from "@/lib/weather";
@@ -31,10 +31,9 @@ function NavItem({ to, icon, label, badge, end, tour }: { to: string; icon: Reac
   );
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { signOut } = useAuth();
+/* `onLogOut` opens the confirmation, which lives in AppShell because the phone drawer unmounts this sidebar when it closes. */
+function Sidebar({ onNavigate, onLogOut }: { onNavigate?: () => void; onLogOut: () => void }) {
   const { profile } = usePortal();
-  const navigate = useNavigate();
   const name = profile?.full_name || profile?.odoo_customer_name || profile?.email || "";
   return (
     <div className="flex h-full flex-col bg-brand-dark px-4 py-6 text-white" onClick={onNavigate}>
@@ -55,11 +54,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="truncate text-sm font-semibold text-white">{name}</span>
           </Link>
           <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              await signOut();
-              navigate("/login", { replace: true });
-            }}
+            onClick={onLogOut}
             className="rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
             aria-label="Log out"
             title="Log out"
@@ -93,6 +88,7 @@ function WeatherChip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const tour = useTour();
   // The tour keeps the drawer open while it rings a sidebar item (phones only; from lg the drawer is hidden anyway).
   const drawer = usePresence(open || tour.wantsDrawer, 200);
@@ -101,7 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Desktop sidebar */}
       <aside className="hidden w-[296px] shrink-0 lg:block">
         <div className="sticky top-0 h-screen">
-          <Sidebar />
+          <Sidebar onLogOut={() => setLogoutOpen(true)} />
         </div>
       </aside>
 
@@ -116,7 +112,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className={cx("absolute inset-0 bg-neutral-900/50", drawer.exiting ? "anim-fade-out" : "anim-fade-in")} onClick={() => setOpen(false)} />
           <div className={cx("absolute inset-y-0 left-0 w-[296px] shadow-lg", drawer.exiting ? "anim-slide-out-left" : "anim-slide-in-left")}>
-            <Sidebar onNavigate={() => setOpen(false)} />
+            <Sidebar onNavigate={() => setOpen(false)} onLogOut={() => setLogoutOpen(true)} />
             <button onClick={() => setOpen(false)} className="absolute right-3 top-5 rounded-md p-1 text-white/80 hover:bg-white/10" aria-label="Close menu">
               <X className="h-5 w-5" />
             </button>
@@ -126,8 +122,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1">
         <div className="max-w-[1120px] px-4 py-6 sm:px-8 sm:py-8">
-          {/* Header row (Figma Onboarding v2): Get Started Tips beside the weather and location, on every page; right-aligned from lg. */}
-          <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 lg:justify-end">
+          {/* Header row (Figma Onboarding v2): Get Started Tips beside the weather and location, on every page. From lg it
+              floats to the top-right corner so the first line of the page (the Home greeting, a breadcrumb) starts on the
+              same row instead of under it (review 2026-11-12); a long title wraps beside it. Below lg it is a row of its own. */}
+          <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 lg:float-right lg:mb-4 lg:ml-6">
             <Button variant="secondary" onClick={tour.start} data-tour="get-started" className="font-semibold">
               <Lightbulb className="h-4 w-4 text-neutral-500" /> Get Started Tips
             </Button>
@@ -139,6 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <TourOverlay />
+      <LogoutConfirm open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </div>
   );
 }

@@ -92,9 +92,10 @@ export function ConsumptionChart({ points, hasConsumption, hasBattery = true, in
               const p = payload[0].payload as SeriesPoint;
               const rows = hasConsumption
                 ? [
-                    { label: "Grid", value: `${num(p.grid, 1)} kWh`, color: COLORS.grid },
-                    { label: "Solar", value: `${num(p.solar, 1)} kWh`, color: COLORS.solar },
+                    // Top to bottom as the bar is stacked: Battery, Solar, Grid (review 2026-11-12).
                     ...(hasBattery ? [{ label: "Battery", value: `${num(p.battery, 1)} kWh`, color: COLORS.battery }] : []),
+                    { label: "Solar", value: `${num(p.solar, 1)} kWh`, color: COLORS.solar },
+                    { label: "Grid", value: `${num(p.grid, 1)} kWh`, color: COLORS.grid },
                     { label: "Total", value: `${num(p.consumption ?? 0, 1)} kWh` },
                   ]
                 : [{ label: "Production", value: `${num(p.production, 1)} kWh`, color: COLORS.production }];
@@ -121,8 +122,9 @@ export function ConsumptionChart({ points, hasConsumption, hasBattery = true, in
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
+/** In the order the bar is stacked, top to bottom, the same as the tooltip. */
 export const LEGEND = [
-  { key: "grid", label: "Grid", color: COLORS.grid },
-  { key: "solar", label: "Solar", color: COLORS.solar },
   { key: "battery", label: "Battery", color: COLORS.battery },
+  { key: "solar", label: "Solar", color: COLORS.solar },
+  { key: "grid", label: "Grid", color: COLORS.grid },
 ];
