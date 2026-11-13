@@ -85,12 +85,20 @@ const META_KEY = "portal_tour";
 type TourRecord = { status: "completed" | "dismissed"; at: string };
 const storageKey = (userId: string) => `portal.tour.${userId}`;
 
+/**
+ * An admin reset writes `portal_tour: { status: "reset", at }` to the account (first done 2026-11-13,
+ * with the password reset). It means "show the welcome again", also on a browser that still holds its
+ * own copy from before: that copy only counts when it is newer than the reset. Any answer to the
+ * welcome overwrites the marker with completed / dismissed as usual.
+ */
 function readRecord(user: User): TourRecord | null {
   const meta = user.user_metadata?.[META_KEY];
-  if (meta && typeof meta === "object" && typeof meta.status === "string") return meta as TourRecord;
+  const resetAt = meta && typeof meta === "object" && meta.status === "reset" && typeof meta.at === "string" ? meta.at : null;
+  if (!resetAt && meta && typeof meta === "object" && typeof meta.status === "string") return meta as TourRecord;
   try {
     const raw = localStorage.getItem(storageKey(user.id));
-    return raw ? (JSON.parse(raw) as TourRecord) : null;
+    const local = raw ? (JSON.parse(raw) as TourRecord) : null;
+    return local && resetAt && !(local.at > resetAt) ? null : local;
   } catch {
     return null;
   }
