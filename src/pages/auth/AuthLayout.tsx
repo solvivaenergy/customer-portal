@@ -37,8 +37,16 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         screen tall (h-screen, not min-h-screen): only with a definite height does the spacer give way
         on a window too short for the form, and what still does not fit scrolls inside the grid, panel
         included. Re-measure 497px if Log in's content changes.
+
+        The welcome text does not follow the form at all (2026-11-13): on a window too short for
+        Create a new password the form still has to move up, and the text went up with it. It is now
+        placed on its own, 88px below where Log in's lockup starts, which is exactly where sharing
+        Log in's heading baseline used to put it at both text sizes (measured). It is positioned
+        absolutely inside its grid area, so it has no say in the row heights. The heading keeps the
+        3px (14px from xl) by which the larger welcome headline used to push it down, so the two
+        still share a baseline on Log in and Log in itself is unchanged.
       */}
-      <div className="flex flex-1 flex-col lg:grid lg:h-screen lg:flex-none lg:overflow-y-auto lg:grid-cols-[3fr_2fr] lg:grid-rows-[minmax(1.5rem,calc((100vh_-_497px)/2))_auto_auto_minmax(2rem,1fr)_auto]">
+      <div className="flex flex-1 flex-col lg:relative lg:grid lg:h-screen lg:flex-none lg:overflow-y-auto lg:grid-cols-[3fr_2fr] lg:grid-rows-[minmax(1.5rem,calc((100vh_-_497px)/2))_auto_auto_minmax(2rem,1fr)_auto]">
         <div className="relative hidden overflow-hidden bg-brand-chartreuse lg:col-start-2 lg:row-span-full lg:block" aria-hidden="true">
           {/* Sized by viewport height so the visible quarter (~36vh) always stays below the welcome text, whatever the window size. */}
           <SolvivaSunMark className="pointer-events-none absolute bottom-0 right-0 h-[75vh] w-[75vh] translate-x-[45%] translate-y-[55%] text-brand-dark/10" />
@@ -48,13 +56,13 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           <Logo variant="dark" size="xl" linkTo={null} />
         </div>
 
-        <main className="anim-fade-up flex-1 px-6 pt-6 pb-8 sm:px-10 lg:col-start-1 lg:row-start-3 lg:w-full lg:max-w-md lg:flex-none lg:justify-self-center lg:self-baseline lg:px-0 lg:py-0">
+        <main className="anim-fade-up flex-1 px-6 pt-6 pb-8 sm:px-10 lg:col-start-1 lg:row-start-3 lg:w-full lg:max-w-md lg:flex-none lg:justify-self-center lg:px-0 lg:pt-[3px] lg:pb-0 xl:pt-[14px]">
           <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">{title}</h1>
           {subtitle && <p className="mt-2 text-base text-neutral-500">{subtitle}</p>}
           <div className="mt-8">{children}</div>
         </main>
 
-        <aside className="relative hidden lg:col-start-2 lg:row-start-3 lg:block lg:self-baseline lg:px-14 xl:px-20" aria-label="Welcome">
+        <aside className="hidden lg:absolute lg:inset-x-0 lg:top-[calc(max(1.5rem,(100vh_-_497px)/2)_+_88px)] lg:col-start-2 lg:row-span-full lg:row-start-1 lg:block lg:px-14 xl:px-20" aria-label="Welcome">
           <h2 className="text-4xl font-semibold leading-[1.1] tracking-tight text-brand-dark xl:text-5xl">
             Your solar,
             <br />
