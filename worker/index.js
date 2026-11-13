@@ -34,8 +34,10 @@ const shareDescription = (code) => `Book your free solar consultation and site a
 // Facebook shows the description only on the small card, thumbnail beside the text, and picks the card from
 // the image size. Seen on real posts (2026-11-12/13): a 320px square gives the small card; a 500px square
 // already gives the large one, picture on top, cropped wide, title only. So the picture is CX's rooftop
-// photo scaled from 1080px to 320px (public/brand/share-referral-320.jpg). Do not enlarge it.
-const SHARE_IMAGE = { url: `https://${CANONICAL_HOST}${PREFIX}/brand/share-referral-320.jpg`, size: 320, alt: "A home with Solviva solar panels on its roof" };
+// photo at 320px (public/brand/share-referral-thumb.jpg). Do not enlarge it. Facebook shrinks it again to a
+// thumbnail of about 158px and recompresses it, which blurred the full drone shot (2026-11-13), so the file
+// is cropped closer to the roof, lightly sharpened and saved at high quality.
+const SHARE_IMAGE = { url: `https://${CANONICAL_HOST}${PREFIX}/brand/share-referral-thumb.jpg`, size: 320, alt: "A home with Solviva solar panels on its roof" };
 // Referral codes are the Odoo lead codes: letters (ñ included), digits and - . ( ). Anything else is not a
 // code, so nobody can put their own wording on a solvivaenergy.com card.
 const REFERRAL_CODE = /^[\p{L}\p{N}().-]{1,40}$/u;
