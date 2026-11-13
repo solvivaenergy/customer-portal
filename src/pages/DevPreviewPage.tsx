@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { CoinsIcon, HandshakeIcon, PhoneCallIcon, PmsToolsIcon, SupportTicketIcon } from "@/components/icons";
-import { Badge, Card, Segmented, Tabs } from "@/components/ui";
+import { Badge, Card, Segmented, Tabs, Toast } from "@/components/ui";
 import { yearDivider, type SeriesPoint } from "@/lib/energy";
 import { ConsumptionChart, SavingsChart } from "./home/charts";
 import { ChangePasswordView } from "./auth/ChangePasswordPage";
@@ -307,6 +307,12 @@ export default function DevPreviewPage() {
   }
   if (screen === "change-password")
     return <ChangePasswordView email="juan.delacruz@example.com" isTemporaryPassword={(p) => p === "temporary1"} onSave={async () => undefined} onLogOut={() => undefined} />;
+  if (screen === "toast")
+    return (
+      <Toast open onClose={() => undefined} duration={600000}>
+        Your changes have been saved.
+      </Toast>
+    );
   if (screen === "mobile") return <MobilePieces />;
   if (screen === "ticket-detail") return <TicketDetailPieces />;
   if (screen === "tour") return <TourPieces />;

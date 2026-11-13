@@ -164,3 +164,13 @@ export function WelcomeSupportIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/** Filled olive circle with a white tick (Figma 843:12057) — a password rule that is met. */
+export function RuleMetIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path id="Vector" d="M8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 0 8 0C3.58172 0 0 3.58172 0 8C0 12.4183 3.58172 16 8 16Z" fill="#508908"/>
+      <path id="Vector_2" d="M4.8 8.2L6.9 10.3L11.2 5.7" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" stroke="white"/>
+    </svg>
+  );
+}

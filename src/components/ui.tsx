@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Loader2, X } from "lucide-react";
+import { ChevronDown, CircleCheck, Loader2, X } from "lucide-react";
 
 export const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
 
@@ -265,6 +265,41 @@ export function usePresence(open: boolean, exitMs = 160) {
  */
 export function Overlay({ children }: { children: ReactNode }) {
   return createPortal(children, document.body);
+}
+
+/**
+ * A floating confirmation at the top of the screen (test remark 2026-11-13: the inline "saved" banner
+ * at the foot of the form was easy to miss). Closes itself after `duration` ms or on the × button;
+ * it never takes focus or blocks the page (the wrapper ignores pointer events, only the card takes them).
+ */
+export function Toast({ open, onClose, children, duration = 5000 }: { open: boolean; onClose: () => void; children: ReactNode; duration?: number }) {
+  const { mounted, exiting } = usePresence(open);
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(onClose, duration);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, duration]);
+  if (!mounted) return null;
+  return (
+    <Overlay>
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center p-4 sm:p-6">
+        <div
+          role="status"
+          className={cx(
+            "pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-xl border border-green-700/20 bg-white px-4 py-3 text-base font-medium text-neutral-900 shadow-lg",
+            exiting ? "anim-fade-out" : "anim-fade-up",
+          )}
+        >
+          <CircleCheck className="h-5 w-5 shrink-0 text-green-700" aria-hidden="true" />
+          <span className="min-w-0 flex-1">{children}</span>
+          <button type="button" onClick={onClose} aria-label="Dismiss" className="shrink-0 rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </Overlay>
+  );
 }
 
 /** Animated expand/collapse with no height measuring: the grid row eases between 0fr and 1fr. */

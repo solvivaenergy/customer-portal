@@ -29,8 +29,16 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         row and share a baseline (review note 2026-10-30). Columns 3fr/2fr; rows: spacer, lockup,
         heading + content, spacer, footer. The welcome panel's background spans every row of the
         right column; its text sits in the heading row. Below lg the same children stack as a column.
+
+        The top spacer is capped at what the Log in page gets when its content is centred
+        ((100vh - 497px) / 2; 497px = Log in's lockup + form + footer), so every auth page starts its
+        lockup, heading and welcome text where Log in does and a longer form (Create a new password)
+        grows downward instead of pushing them up (test remark 2026-11-13). The grid is exactly one
+        screen tall (h-screen, not min-h-screen): only with a definite height does the spacer give way
+        on a window too short for the form, and what still does not fit scrolls inside the grid, panel
+        included. Re-measure 497px if Log in's content changes.
       */}
-      <div className="flex flex-1 flex-col lg:grid lg:min-h-screen lg:grid-cols-[3fr_2fr] lg:grid-rows-[1fr_auto_auto_1fr_auto]">
+      <div className="flex flex-1 flex-col lg:grid lg:h-screen lg:flex-none lg:overflow-y-auto lg:grid-cols-[3fr_2fr] lg:grid-rows-[minmax(1.5rem,calc((100vh_-_497px)/2))_auto_auto_minmax(2rem,1fr)_auto]">
         <div className="relative hidden overflow-hidden bg-brand-chartreuse lg:col-start-2 lg:row-span-full lg:block" aria-hidden="true">
           {/* Sized by viewport height so the visible quarter (~36vh) always stays below the welcome text, whatever the window size. */}
           <SolvivaSunMark className="pointer-events-none absolute bottom-0 right-0 h-[75vh] w-[75vh] translate-x-[45%] translate-y-[55%] text-brand-dark/10" />

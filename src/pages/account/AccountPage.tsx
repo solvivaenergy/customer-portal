@@ -1,11 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, CircleCheck, ExternalLink, FileText, LifeBuoy, LogOut, ScrollText, ShieldCheck } from "lucide-react";
+import { ChevronDown, ExternalLink, FileText, LifeBuoy, ScrollText, ShieldCheck } from "lucide-react";
 import { Breadcrumb } from "@/layout/Breadcrumb";
-import { Badge, Button, Collapse, ErrorNotice, Input, Modal, PageHeader, Select, Tabs } from "@/components/ui";
+import { Badge, Button, Collapse, ErrorNotice, Input, Modal, PageHeader, Select, Tabs, Toast } from "@/components/ui";
 import { usePortal } from "@/lib/portal";
 import { useAuth } from "@/auth/AuthProvider";
-import { LogoutConfirm } from "@/auth/LogoutConfirm";
 import { env } from "@/lib/env";
 import { longDate, num } from "@/lib/format";
 import { FAQ_CATEGORIES, FAQS, type FaqBlock } from "@/content/faqs";
@@ -60,7 +59,6 @@ function ProfileTab() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pwOpen, setPwOpen] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -77,8 +75,7 @@ function ProfileTab() {
     setError(null);
     try {
       await updateProfile({ full_name: fullName.trim() || null, phone: phone.trim() || null, address: address.trim() || null });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 5000);
+      setSaved(true); // the toast closes itself
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -114,28 +111,21 @@ function ProfileTab() {
             </Button>
           </div>
         </Row>
-        {saved && (
-          <div role="status" className="anim-fade-up mt-6 flex items-center gap-3 rounded-lg border border-green-700/20 bg-green-50 px-4 py-3 text-base font-medium text-green-700">
-            <CircleCheck className="h-5 w-5 shrink-0" aria-hidden="true" /> Your changes have been saved.
-          </div>
-        )}
-        <div className="flex items-center justify-between pt-6">
-          <Button type="button" variant="ghost" onClick={() => setLogoutOpen(true)}>
-            <LogOut className="h-4 w-4" /> Log out
+        {/* No "Log out" here: the navigation already carries it (Alden, 2026-11-13). */}
+        <div className="flex items-center justify-end gap-3 pt-6">
+          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
+            Back
           </Button>
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
-              Back
-            </Button>
-            <Button type="submit" loading={saving} disabled={!dirty}>
-              Save changes
-            </Button>
-          </div>
+          <Button type="submit" loading={saving} disabled={!dirty}>
+            Save changes
+          </Button>
         </div>
       </Section>
 
+      <Toast open={saved} onClose={() => setSaved(false)}>
+        Your changes have been saved.
+      </Toast>
       <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} onChange={changePassword} />
-      <LogoutConfirm open={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </form>
   );
 }

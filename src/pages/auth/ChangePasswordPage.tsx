@@ -1,9 +1,10 @@
 import { useId, useState, type FormEvent } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { Circle, CircleCheck, Eye, EyeOff } from "lucide-react";
+import { Circle, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { LogoutConfirm } from "@/auth/LogoutConfirm";
 import { mustChangePassword } from "@/lib/firstLogin";
+import { RuleMetIcon } from "@/components/brand";
 import { Button, cx, ErrorNotice, Input, Spinner } from "@/components/ui";
 import { AuthLayout } from "./AuthLayout";
 
@@ -119,7 +120,7 @@ export function ChangePasswordView({
     { label: "Includes a letter and a number", met: /[A-Za-z]/.test(password) && /\d/.test(password) },
     { label: "Different from your temporary password", met: password.length > 0 && isTemporaryPassword(password) !== true },
   ];
-  const mismatch = tried && confirm !== password ? "The passwords do not match." : null;
+  const mismatch = tried && confirm !== password ? "Passwords don’t match." : null;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -139,14 +140,16 @@ export function ChangePasswordView({
   return (
     <AuthLayout title="Create a new password" subtitle="You signed in with a temporary password. Choose a new one to continue.">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg bg-neutral-100 px-3.5 py-3 text-sm">
-          <p className="min-w-0 text-neutral-500">
-            Signed in as <strong className="font-semibold break-all text-neutral-900">{email}</strong>
+        {/* One line from sm up, as in the Figma frame: "Not you? Log out" stays beside "Signed in as" and a long
+            address is cut with an ellipsis (full address in the tooltip). A phone is too narrow for that, so there it wraps. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-neutral-100 px-3.5 py-3 text-sm sm:flex-nowrap">
+          <p className="min-w-0 text-neutral-500 sm:truncate" title={email}>
+            Signed in as <strong className="font-semibold break-all text-neutral-900 sm:break-normal">{email}</strong>
           </p>
           <button
             type="button"
             onClick={onLogOut}
-            className="font-semibold whitespace-nowrap text-brand-blue hover:underline"
+            className="shrink-0 font-semibold whitespace-nowrap text-brand-blue hover:underline"
           >
             Not you? Log out
           </button>
@@ -158,8 +161,8 @@ export function ChangePasswordView({
             <PasswordField label="New password" value={password} onChange={setPassword} placeholder="Enter a new password" invalid={tried && rules.some((r) => !r.met)} autoFocus />
             <ul className="flex flex-col gap-2" aria-label="Password requirements">
               {rules.map((r) => (
-                <li key={r.label} className={cx("flex items-center gap-2 text-sm", r.met ? "text-neutral-700" : tried ? "text-red-700" : "text-neutral-700")}>
-                  {r.met ? <CircleCheck className="h-4 w-4 shrink-0 text-green-700" aria-hidden="true" /> : <Circle className={cx("h-4 w-4 shrink-0", tried ? "text-red-700" : "text-neutral-400")} aria-hidden="true" />}
+                <li key={r.label} className={cx("flex items-center gap-2 text-sm", r.met ? "text-brand-olive" : tried ? "text-red-700" : "text-neutral-700")}>
+                  {r.met ? <RuleMetIcon className="h-4 w-4 shrink-0" /> : <Circle className={cx("h-4 w-4 shrink-0", tried ? "text-red-700" : "text-neutral-400")} aria-hidden="true" />}
                   {r.label}
                   <span className="sr-only">{r.met ? "(met)" : "(not met)"}</span>
                 </li>
