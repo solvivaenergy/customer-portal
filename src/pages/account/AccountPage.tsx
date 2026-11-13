@@ -137,6 +137,16 @@ function ChangePasswordModal({ open, onClose, onChange }: { open: boolean; onClo
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // Every opening starts on the empty form. Without this the dialog stayed on "Your password has been
+  // updated." after one change, so a second change in the same visit was impossible (found 2026-11-13).
+  useEffect(() => {
+    if (!open) return;
+    setDone(false);
+    setError(null);
+    setCurrent("");
+    setNext("");
+    setConfirm("");
+  }, [open]);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     e.stopPropagation(); // the modal sits inside the profile form in the React tree; don't trigger its save as well
