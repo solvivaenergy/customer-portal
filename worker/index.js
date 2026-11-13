@@ -14,8 +14,8 @@
  * /mysolviva/refer/<code> is the link the portal posts to Facebook (src/pages/home/share.tsx). A link
  * preview is built from the Open Graph tags of the posted URL, and the website's home page has one fixed
  * set whose canonical URL drops ?Referral=, so a post of the referral link itself shows the home page's
- * card and loses the code. This path answers preview crawlers with a card that names the code and sends
- * everyone else on to the referral link, https://www.solvivaenergy.com/?Referral=<code>.
+ * card and loses the code. This path serves a card that names the code, with a script that sends a
+ * browser on to the referral link, https://www.solvivaenergy.com/?Referral=<code>.
  */
 const PREFIX = "/mysolviva";
 const CANONICAL_HOST = "www.solvivaenergy.com";
@@ -34,12 +34,14 @@ const SHARE_IMAGE = { url: `https://${CANONICAL_HOST}${PREFIX}/brand/share-refer
 // Referral codes are the Odoo lead codes: letters (ñ included), digits and - . ( ). Anything else is not a
 // code, so nobody can put their own wording on a solvivaenergy.com card.
 const REFERRAL_CODE = /^[\p{L}\p{N}().-]{1,40}$/u;
-// The programs that fetch a page to draw its preview card. They read the tags; they are not redirected.
-const PREVIEW_CRAWLER = /facebookexternalhit|facebot|meta-externalagent|twitterbot|linkedinbot|whatsapp|viber|telegrambot|slackbot|discordbot|skypeuripreview/i;
 
 const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-function referralShare(request, url) {
+// Everyone gets the same page: the card's tags, and a script that sends a browser on to the referral link.
+// Preview fetchers read the tags and run no script, so they stay here. The first version told the two apart
+// by User-Agent and redirected the rest with a 302; a fetcher missing from that list (Facebook's post
+// composer, 2026-11-13) was sent to the home page and showed the home page's card.
+function referralShare(url) {
   const home = `https://${CANONICAL_HOST}/`;
   let code = "";
   try {
@@ -49,9 +51,6 @@ function referralShare(request, url) {
   }
   if (!REFERRAL_CODE.test(code)) return Response.redirect(home, 302);
   const target = `${home}?Referral=${encodeURIComponent(code)}`;
-  if (!PREVIEW_CRAWLER.test(request.headers.get("User-Agent") || "")) {
-    return new Response(null, { status: 302, headers: { Location: target, "Cache-Control": "no-store", Vary: "User-Agent" } });
-  }
   const self = `https://${CANONICAL_HOST}${REFER_PATH}${encodeURIComponent(code)}`;
   const description = escapeHtml(shareDescription(code));
   const html = `<!doctype html>
@@ -77,10 +76,12 @@ function referralShare(request, url) {
 <meta name="twitter:image" content="${SHARE_IMAGE.url}">
 </head>
 <body>
+<script>location.replace(${JSON.stringify(target)});</script>
 <p><a href="${escapeHtml(target)}">${SHARE_TITLE}</a></p>
 </body>
 </html>`;
-  return withSecurityHeaders(new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", Vary: "User-Agent" } }));
+  // Not through withSecurityHeaders: its report-only policy would log this page's own inline script on every visit.
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", ...SECURITY_HEADERS } });
 }
 
 // Everything the app loads or calls: Google Fonts (index.html), Supabase (auth + realtime), the
@@ -155,7 +156,7 @@ export default {
     }
     if (!url.pathname.startsWith(`${PREFIX}/`)) return new Response("Not found", { status: 404 });
 
-    if (url.pathname.startsWith(REFER_PATH)) return referralShare(request, url);
+    if (url.pathname.startsWith(REFER_PATH)) return referralShare(url);
 
     if (url.pathname === REPORT_PATH) {
       if (request.method !== "POST") return new Response("Not found", { status: 404 });
