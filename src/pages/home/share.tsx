@@ -17,12 +17,12 @@ export function shareText(kind: ShareKind, amount: number, since: string | null,
 export const referralLink = (code: string | null) => `${REFERRAL.landingUrl}/${code ? `?Referral=${encodeURIComponent(code)}` : ""}`;
 
 /**
- * What a Facebook post links to: the Worker's /mysolviva/refer/CODE (worker/index.js), which gives Facebook a
+ * What a Facebook post links to: the Worker's /mysolviva/r/CODE (worker/index.js), which gives Facebook a
  * card titled "Switch to solar with Solviva" that names the code, and sends whoever clicks it to the
  * referral link above. Posting the referral link itself shows the website home page's card without the
  * code. Always the production host: the GitHub Pages demo has no Worker.
  */
-export const facebookShareLink = (code: string | null) => (code ? `${REFERRAL.landingUrl}/mysolviva/refer/${encodeURIComponent(code)}` : referralLink(code));
+export const facebookShareLink = (code: string | null) => (code ? `${REFERRAL.landingUrl}/mysolviva/r/${encodeURIComponent(code)}` : referralLink(code));
 
 function CopyField({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);

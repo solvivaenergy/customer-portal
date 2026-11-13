@@ -11,7 +11,7 @@
  * browser to /mysolviva/csp-report and logged (Workers & Pages → customer-portal → Logs). Once real
  * traffic has produced no genuine violations, rename the header to Content-Security-Policy to enforce it.
  *
- * /mysolviva/refer/<code> is the link the portal posts to Facebook (src/pages/home/share.tsx). A link
+ * /mysolviva/r/<code> is the link the portal posts to Facebook (src/pages/home/share.tsx). A link
  * preview is built from the Open Graph tags of the posted URL, and the website's home page has one fixed
  * set whose canonical URL drops ?Referral=, so a post of the referral link itself shows the home page's
  * card and loses the code. This path serves a card that names the code, with a script that sends a
@@ -21,7 +21,12 @@ const PREFIX = "/mysolviva";
 const CANONICAL_HOST = "www.solvivaenergy.com";
 const ONE_YEAR = "public, max-age=31536000, immutable";
 const REPORT_PATH = `${PREFIX}/csp-report`;
-const REFER_PATH = `${PREFIX}/refer/`;
+// The share page's address. Facebook keeps what it read at an address for weeks, wrong answers included:
+// /refer/ answered some of its fetchers with a redirect to the home page on 2026-11-12/13, and posts of
+// those addresses kept showing the home page's card after the fix. /r/ is the address the portal posts
+// now; /refer/ still works for links already out there. To make Facebook read a changed card afresh
+// (new picture, new wording), add a new prefix here and post that one from share.tsx.
+const REFER_PATHS = [`${PREFIX}/r/`, `${PREFIX}/refer/`];
 
 // Card wording from CX's share brief (2026-11-12). The code is the only variable part.
 const SHARE_TITLE = "Switch to solar with Solviva";
@@ -41,17 +46,17 @@ const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&l
 // Preview fetchers read the tags and run no script, so they stay here. The first version told the two apart
 // by User-Agent and redirected the rest with a 302; a fetcher missing from that list (Facebook's post
 // composer, 2026-11-13) was sent to the home page and showed the home page's card.
-function referralShare(url) {
+function referralShare(url, prefix) {
   const home = `https://${CANONICAL_HOST}/`;
   let code = "";
   try {
-    code = decodeURIComponent(url.pathname.slice(REFER_PATH.length)).normalize("NFC");
+    code = decodeURIComponent(url.pathname.slice(prefix.length)).normalize("NFC");
   } catch {
     // Malformed escape: treated as no code.
   }
   if (!REFERRAL_CODE.test(code)) return Response.redirect(home, 302);
   const target = `${home}?Referral=${encodeURIComponent(code)}`;
-  const self = `https://${CANONICAL_HOST}${REFER_PATH}${encodeURIComponent(code)}`;
+  const self = `https://${CANONICAL_HOST}${prefix}${encodeURIComponent(code)}`;
   const description = escapeHtml(shareDescription(code));
   const html = `<!doctype html>
 <html lang="en">
@@ -156,7 +161,8 @@ export default {
     }
     if (!url.pathname.startsWith(`${PREFIX}/`)) return new Response("Not found", { status: 404 });
 
-    if (url.pathname.startsWith(REFER_PATH)) return referralShare(url);
+    const referPrefix = REFER_PATHS.find((p) => url.pathname.startsWith(p));
+    if (referPrefix) return referralShare(url, referPrefix);
 
     if (url.pathname === REPORT_PATH) {
       if (request.method !== "POST") return new Response("Not found", { status: 404 });
