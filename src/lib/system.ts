@@ -2,7 +2,7 @@ import { env } from "./env";
 
 /**
  * Equipment details come from the customer's CRM lead in Odoo (battery, inverter, sales rep). The
- * nightly mirror does not copy these into `solar_systems` yet, so the portal asks the staging n8n
+ * nightly mirror does not copy these into `solar_systems` yet, so the portal asks the n8n
  * workflow `get-my-system` for the login's own leads. The installed and energization dates are
  * mirrored (`solar_systems.odoo_installed_date`, `energization_date`); Odoo's own energization
  * field is empty on every lead.

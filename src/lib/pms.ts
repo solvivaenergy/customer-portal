@@ -4,7 +4,7 @@ import type { PmsRecord, TicketStatus } from "./types";
 
 /**
  * PMS requests live in Odoo's Maintenance app (`maintenance.request`, custom `x_pms_*` fields),
- * not in Helpdesk. Two staging n8n workflows front it (scripts/n8n/create-staging-workflows.mjs):
+ * not in Helpdesk. Two n8n workflows front it, on staging only (scripts/n8n/create-portal-workflows.mjs):
  *   POST {n8n}/get-my-pms   {email, partner_id, lead_ids} → the customer's requests
  *   POST {n8n}/pms-request  wizard answers → creates a maintenance.request (questionnaire mapping)
  */

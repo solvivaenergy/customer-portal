@@ -21,11 +21,11 @@ type OdooTicket = {
   create_date: string; // "YYYY-MM-DD HH:MM:SS" in UTC
   partner_email: string | false;
   partner_name: string | false;
-  // Returned by the staging workflow (and by production once its field list is extended).
+  // Returned by the portal's own workflows (staging and production), not by the older website proxy.
   ticket_ref?: string | false;
   team_id?: [number, string] | false;
   tag_ids?: number[];
-  /** Tag names, resolved by the staging workflow (helpdesk.tag). */
+  /** Tag names, resolved by the list workflow (helpdesk.tag). */
   tags?: string[];
 };
 

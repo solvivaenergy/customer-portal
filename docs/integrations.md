@@ -14,17 +14,31 @@
 | Referral code | `user_profiles.referral_code`: the `x_studio_customer_referral_code` of the Odoo lead the plant is mapped to (`solar_systems.odoo_lead_id`), copied nightly by monitoring `api/sync_referral_codes.py`. Lead id only since 2026-11-09 (Alden); a login with several plants takes the primary plant's lead. Before that the sync matched by login email and name, which gave a customer with two properties the other property's code. | **Referral earnings have no source** in Odoo yet: the Home page shows a muted "Tracking your referral earnings is coming soon" note under Refer and Earn (Figma "Homepage"; the clickable ₱0 card was dropped 2026-10-30). Share link = `https://www.solvivaenergy.com/?Referral=CODE` (the parameter the website's inquiry form reads; was `?ref=` until 2026-11-09); no dedicated landing page. Share targets since 2026-11-10 (Lili): Messenger, Facebook, Viber, the copy field and the device share sheet ("More options…"); LinkedIn, X, Telegram and Instagram were dropped as a poor fit or unable to carry the text. Messenger on a phone opens the app with the link (the code is in it); on a desktop the button copies the message and opens messenger.com to paste it in. Facebook's Send dialog would need a Meta developer app and still would not carry the text, so it was skipped (Alden, 2026-11-10). Viber uses `viber://forward` everywhere the app is installed. |
 | Weather chip | `/app/weather?station_id=` → the forecast Solis Cloud attaches to the plant (`stationDetail`: `cityStr`, `tmpMin`/`tmpMax`, `condTxtD`/`condTxtN` + QWeather code, sunrise/sunset) | Since 2026-11-09 (Alden: "match Solis every time"). Shows the day's low–high and the city set on the plant in Solis, with the day condition between sunrise and sunset and the night one otherwise; Solis refreshes it around 05:00 Manila, the API caches it 15 min per station, the portal 30 min. Follows the site selector (the API checks the login owns or was granted the station). Hidden only when Solis has no forecast for the plant. Before: Open-Meteo, city guessed from the postal address — wrong town for region-suffixed addresses, hidden on the ~half of systems without one. |
 | Onboarding tour ("Get Started Tips") | Supabase Auth user metadata `portal_tour` = `{status: completed \| dismissed, at}` written with `auth.updateUser`; localStorage `portal.tour.<user id>` as fallback | Since 2026-10-30, Figma "Onboarding v2". The welcome modal shows on the first login (no record yet) of an account with a system; "Show me around" runs the nine tips (Home ×5, Support ×4), × / "Maybe later" records `dismissed`, Finish records `completed`. No table column needed; `lib/tour.tsx` + `components/tour/`. |
-| My activities (tickets) | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-tickets` `{email, partner_id, lead_ids}` (`lib/portal.tsx` `odooIdentity`) → Odoo `helpdesk.ticket` whose `partner_id` is the profile's partner or the partner of any of the customer's leads (n8n reads `crm.lead.partner_id` for the `lead_ids`), OR whose `partner_email` matches the customer's **Odoo** email. Same ownership rule on `get-ticket-messages` and `ticket-reply` (since 2026-11-09, Alden). The login email is never sent: it is the Solis address. The email fallback matters — tickets filed from the website form are matched by Odoo on the email alone, so only the email finds them (5 of Abigail Almendrala's 6 on staging). | **Staging** workflow (`…/webhook/staging`, see below) returns name, description, stage, priority, create_date, `ticket_ref`, `team_id`, `tag_ids`; the portal shows `#<ticket_ref>` and treats the "PMS" team/subject as a PMS request. The **production** workflow (`…/webhook`) returns no `ticket_ref` and, as of 2026-10-12, always answers `[]`: its "Odoo Authenticate" body lacks the `=` expression prefix, so the `{{ $vars }}` placeholders are sent literally and authentication fails (one-character fix in n8n). |
+| My activities (tickets) | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-tickets` `{email, partner_id, lead_ids}` (`lib/portal.tsx` `odooIdentity`) → Odoo `helpdesk.ticket` whose `partner_id` is the profile's partner or the partner of any of the customer's leads (n8n reads `crm.lead.partner_id` for the `lead_ids`), OR whose `partner_email` matches the customer's **Odoo** email. Same ownership rule on `get-ticket-messages` and `ticket-reply` (since 2026-11-09, Alden). The login email is never sent: it is the Solis address. The email fallback matters — tickets filed from the website form are matched by Odoo on the email alone, so only the email finds them (5 of Abigail Almendrala's 6 on staging). | The portal's own workflow (`…/webhook/staging` or, on the production site since 2026-11-19, `…/webhook/portal`; see below) returns name, description, stage, priority, create_date, `ticket_ref`, `team_id`, `tag_ids`; the portal shows `#<ticket_ref>` and treats the "PMS" team/subject as a PMS request. The older "Get My Tickets - Odoo Proxy" (`…/webhook/get-my-tickets`, not used by the portal) returns no `ticket_ref` and, as of 2026-10-12, always answers `[]`: its "Odoo Authenticate" body lacks the `=` expression prefix, so the `{{ $vars }}` placeholders are sent literally and authentication fails (one-character fix in n8n). |
 | Ticket status badge | Odoo stage name → New / In Progress / Resolved / Cancelled (keyword mapping in `lib/tickets.ts`) | Staging stages seen: "New". Confirm the full list with CX. |
-| Submit a ticket | n8n `POST {VITE_N8N_WEBHOOK_URL}/webflow-customer-support` with the Webflow form field names and header `X-Submission-Source: customer-portal` (skips reCAPTCHA) → Odoo webhook creates the ticket | Technical vs general path chosen by the concern type (same list as the mobile app / website). The concern list is CX's wording since 2026-11-10 (sentence case, "(warranty claim)", "Electric shock"; Lili) and is sent as is: n8n routes on `ticket-type` only, and Odoo keeps `concern_name` as free text in the ticket description ("Concern Name: …"; `helpdesk.ticket` has no selection field for it, and the tags are set by CX by hand, the same concern carrying different tags). The website's own forms (`/customer-support/technical`, `/customer-support/non-technical`) use a longer, differently worded list, so the two were never identical. Choosing a Safety concern shows a call-the-hotline notice under the field. Attachments not supported. Gated by `VITE_ENABLE_SUBMISSIONS`. The demo build and local dev use the **staging** workflow → odoo.sh staging; the production workflow also serves the website's forms and writes to production Odoo. |
+| Submit a ticket | n8n `POST {VITE_N8N_WEBHOOK_URL}/webflow-customer-support` with the Webflow form field names and header `X-Submission-Source: customer-portal` (skips reCAPTCHA) → Odoo webhook creates the ticket | Technical vs general path chosen by the concern type (same list as the mobile app / website). The concern list is CX's wording since 2026-11-10 (sentence case, "(warranty claim)", "Electric shock"; Lili) and is sent as is: n8n routes on `ticket-type` only, and Odoo keeps `concern_name` as free text in the ticket description ("Concern Name: …"; `helpdesk.ticket` has no selection field for it, and the tags are set by CX by hand, the same concern carrying different tags). The website's own forms (`/customer-support/technical`, `/customer-support/non-technical`) use a longer, differently worded list, so the two were never identical. Choosing a Safety concern shows a call-the-hotline notice under the field. Attachments not supported. Gated by `VITE_ENABLE_SUBMISSIONS`. The demo build and local dev use the **staging** workflow → odoo.sh staging. The production site posts to `…/webhook/portal/webflow-customer-support` since 2026-11-19: a ticket filed there is a real ticket in production Odoo (same Odoo webhook as the website's forms, which keep their own workflow `…/webhook/webflow-customer-support`). |
 | Request PMS switch | `VITE_ENABLE_PMS` (build-time; `false` everywhere since 2026-11-05 — Alden's call to turn PMS off until the intake is agreed) | Off: the Support hub card reads "Coming soon" (not a link), the Support \| PMS switch under My activities is gone, `/support/pms*` goes back to `/support`, the tour's PMS tip says it is coming, and neither `get-my-pms` nor `pms-request` is called. On: everything below as built. Turn it on per environment with the repository variables `VITE_ENABLE_PMS` (demo) / `VITE_ENABLE_PMS_PRODUCTION` (production), or `VITE_ENABLE_PMS=true` in `.env.local`. |
 | My activities → PMS tab | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-my-pms` `{email, partner_id, lead_ids}` → Odoo **Maintenance app** `maintenance.request` (`x_pms_email ilike` / `x_pms_partner_id` / `x_pms_crm_lead_id`) | Since 2026-10-12. Shows the Maintenance stage (New Request, Proposal Sent, Report Validation, Done…) and scheduled visit. Requests After Sales created by hand carry no email/partner/lead, so they stay invisible until "Client (Partner)" is set on them in Odoo. |
 | Request PMS | n8n `POST {VITE_N8N_WEBHOOK_URL}/pms-request` → creates a `maintenance.request` with the PMS questionnaire app's field mapping (`x_pms_*`, `schedule_date` from preferred date + slot, partner/lead from the login) | Same rule as the questionnaire: preferred date at least 10 days out. Gated by `VITE_ENABLE_SUBMISSIONS`. Staging only for now; the production equivalent would be the `pms` Render service's `/pms/api/submit` or a production copy of this workflow. |
 
-## Staging n8n workflows (created 2026-10-12)
+## Portal n8n workflows (staging 2026-10-12, production 2026-11-19)
 
-`scripts/n8n/create-staging-workflows.mjs` creates or updates two workflows in the "Solviva n8n Projects"
-team project, cloned from the production ones but aimed at the odoo.sh **staging** build
+`scripts/n8n/create-portal-workflows.mjs` creates or updates the portal's workflows in the "Solviva n8n
+Projects" team project, one set per Odoo build (`--env staging`, the default, or `--env production`;
+`--dry-run` prints the definitions and writes nothing). The nodes are cloned from the website's own two
+workflows, which the script only reads.
+
+**Production** (`--env production`, Alden 2026-11-19 for the beta): `[PROD] Portal Support Intake`,
+`Get My Tickets`, `Get My System`, `Ticket Messages` and `Ticket Reply`, under
+`https://solviva.app.n8n.cloud/webhook/portal/<same path as staging>`, on production Odoo
+(`$vars.ODOO_SH_PROD_URL`, `…_DB`, `…_USER`, `…_KEY`; tickets go to `$vars.Ticket_Production_Technical_Odoo`
+/ `…_General_Odoo`, the hook the website posts to, Odoo automation rule 102). The two PMS workflows are
+not built for production while Request PMS is off. The same nodes as staging otherwise, so the table
+below describes both. Checked on creation with real customers' identifiers (reads only): ticket lists,
+threads and system details come back, a ticket that is not the caller's returns no messages, and a reply
+to a ticket that is not the caller's is refused. No test ticket or reply was written to production.
+
+**Staging** (`--env staging`): aimed at the odoo.sh staging build
 (`$vars.ODOO_SH_STAGING_URL`, `…_DB`, `…_USER`, `…_KEY`; the Odoo webhook path is reused from
 `$vars.Ticket_Production_Technical_Odoo` because odoo.sh staging is a copy of production):
 
@@ -38,13 +52,15 @@ team project, cloned from the production ones but aimed at the odoo.sh **staging
 | `[STAGING] Portal Ticket Messages → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/get-ticket-messages` | Checks the ticket belongs to the email (`partner_email ilike`), then `mail.message` `search_read` (comment/email, not internal), newest first, max 100. |
 | `[STAGING] Portal Ticket Reply → Odoo` | `POST https://solviva.app.n8n.cloud/webhook/staging/ticket-reply` | Same ownership check, then `helpdesk.ticket` `message_post` with the escaped text as `author_id` = the ticket's partner; answers `{id}`. |
 
-**Security note for production:** these webhooks trust the identifiers the browser sends (email, partner id,
-lead ids). Before go-live the lookups must verify the Supabase JWT and derive the identifiers server-side
-(the monitoring API already does this for `/app/*`), otherwise one customer can request another's data.
+**Security note (open, and it now applies to production Odoo):** these webhooks trust the identifiers the
+browser sends (email, partner id, lead ids) and need no login. Anyone who knows a webhook URL can read
+another customer's tickets and thread by sending that customer's email or partner id, and on production
+can post a reply on their ticket as them. Before the beta widens the lookups must verify the Supabase JWT
+and derive the identifiers server-side (the monitoring API already does this for `/app/*`).
 
 The `Ticket_*` variables are **project-scoped**; a workflow created through the API lands in the key
 owner's personal project where they resolve to `undefined`, so the script transfers each workflow into
-the team project. Production workflows are only read by the script, never changed.
+the team project. The website's workflows are only read by the script, never changed.
 
 odoo.sh rebuilds staging about once a month as a fresh copy of production: the database name changes and
 every API key made on the old build stops working (`ODOO_SH_STAGING_URL` is the alias
@@ -55,8 +71,10 @@ Account Security), then `./py.cmd rotate.py apply --url https://solviva-erp-stag
 C:/Users/roald/Documents/GitHub/solviva-inquiry/.env --deploy` (that repo has no `.env` of its own; `plan`
 instead of `apply` is read-only).
 
-Portal selection: repository variable `VITE_N8N_WEBHOOK_URL` = `…/webhook/staging` (demo) or
-`…/webhook` (production); locally `VITE_N8N_WEBHOOK_URL=/api/n8n/staging` goes through the Vite proxy.
+Portal selection: `VITE_N8N_WEBHOOK_URL` = `…/webhook/staging` (the demo's repository variable) or
+`…/webhook/portal` (production, the default in `scripts/build-production.mjs`; the repository variable
+`VITE_N8N_WEBHOOK_URL_PRODUCTION` overrides it, e.g. back to `…/webhook/staging`); locally
+`VITE_N8N_WEBHOOK_URL=/api/n8n/staging` goes through the Vite proxy.
 | Ticket category | `helpdesk.ticket.tag_ids` → names from `helpdesk.tag` (the staging list workflow reads them and attaches `tags`), filtered through the allowlist in `src/content/ticketCategories.ts` | Since 2026-10-30. Only allow-listed tags reach the portal, renamed for customers ("technical: Battery Fault" → "Battery fault"); internal labels such as Endorsed to Sales, Duplicate Ticket or SQL Following Up never show. The column is the first allowed tag, the detail page lists all; "—" otherwise. Of the 598 tickets owned by portal users on 2026-10-30, about three quarters get a category. Odoo has no ticket Type field; the production list workflow does not return tags yet. |
 | Ticket thread | n8n `POST {VITE_N8N_WEBHOOK_URL}/get-ticket-messages` `{email, ticket_id}` → `mail.message` of that ticket (owned by that email): `message_type` comment/email, `is_internal = false`, subtype not internal, newest first | Since 2026-10-30, staging workflow. Internal notes never leave Odoo. The portal strips the quoted history mail clients append (`data-o-mail-quote`) and shows plain text. |
 | Reply on a ticket | n8n `POST {VITE_N8N_WEBHOOK_URL}/ticket-reply` `{email, ticket_id, body}` → `helpdesk.ticket.message_post` (subtype Discussions, author = the ticket's partner) | Since 2026-10-30, staging workflow; gated by `VITE_ENABLE_SUBMISSIONS` like the forms. Lands on the chatter as the customer's own message, so followers are notified as for an emailed reply. 5000 characters max; text only. |
@@ -82,16 +100,17 @@ Environments section for the build defaults and the deploy workflow. Live since 
 secret `CLOUDFLARE_API_TOKEN` is a Workers-write token that exists only on GitHub, so every push to `main`
 deploys from CI; a deploy from a PC needs `npx wrangler login` first. Done for that
 origin: `ALLOWED_ORIGINS` in the monitoring API (`api/main.py`, deployed from the monitoring repo's `main`),
-Supabase Auth redirect allow-list entry `https://www.solvivaenergy.com/mysolviva/**`. The production site
-uses the **staging** n8n workflows (odoo.sh staging) until production copies exist, so tickets submitted
-there land on staging Odoo, which odoo.sh rebuilds from production about monthly.
+Supabase Auth redirect allow-list entry `https://www.solvivaenergy.com/mysolviva/**`. Since 2026-11-19
+the production site uses the `[PROD] Portal …` n8n workflows on **production** Odoo (Alden, for the beta):
+tickets and replies submitted there are real. From 2026-11-05 until then it used the staging workflows,
+so anything testers filed in that period is on odoo.sh staging only and disappears with its next rebuild.
 
 ## Before go-live (not done)
 
-- Production copies of the portal n8n workflows (tickets, messages, reply, system; PMS when switched
-  back on) aimed at production Odoo, verifying the Supabase JWT instead of trusting the email the
-  browser sends; then set `VITE_N8N_WEBHOOK_URL_PRODUCTION` to `…/webhook`.
+- The portal n8n workflows must verify the Supabase JWT instead of trusting the email, partner id and
+  lead ids the browser sends (the production copies exist since 2026-11-19 and still trust them).
+- Production PMS workflows, when Request PMS is switched back on.
 - Staging Supabase project + seed.
 - Supabase Auth: custom SMTP (SES), branded templates, Site URL; the demo's reset-password redirect URL.
 - Account clean-up and welcome-kit mailing (current logins are internal testers).
-- n8n production: return `ticket_ref`/`team_id`/`tag_ids`; a PMS intake that creates the agreed Odoo record.
+- A PMS intake that creates the agreed Odoo record.

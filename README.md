@@ -68,8 +68,9 @@ static assets and maps `/mysolviva/*` onto it (`wrangler.toml`, `worker/index.js
 redirects to `www`. Never put it on a `workers.dev` host: nothing else is configured for that origin.
 
 - Build: `node scripts/build-production.mjs` — base path `/mysolviva/`, monitoring API
-  `https://monitoring.solvivaenergy.com`, the **staging** n8n webhooks (no production portal workflows
-  exist yet, see `docs/integrations.md`), submissions on, PMS off. The repository variables
+  `https://monitoring.solvivaenergy.com`, the **production** n8n webhooks (`…/webhook/portal`, the
+  `[PROD] Portal …` workflows on production Odoo since 2026-11-19; the demo and local development stay
+  on `…/webhook/staging`, see `docs/integrations.md`), submissions on, PMS off. The repository variables
   `VITE_N8N_WEBHOOK_URL_PRODUCTION`, `VITE_ENABLE_SUBMISSIONS_PRODUCTION` and `VITE_ENABLE_PMS_PRODUCTION`
   override those defaults in CI.
 - Deploy: `.github/workflows/production.yml` runs on every push to `main` and deploys once the repository
@@ -82,5 +83,5 @@ redirects to `www`. Never put it on a `workers.dev` host: nothing else is config
   repo) and Supabase Auth's redirect allow-list (`https://www.solvivaenergy.com/mysolviva/**`, for the
   password-reset mail). The n8n webhooks answer any origin.
 
-**Later:** a staging Supabase project; production copies of the portal n8n workflows that verify the
-Supabase JWT (today the staging ones trust the email the browser sends).
+**Later:** a staging Supabase project; portal n8n workflows that verify the Supabase JWT (today both
+the staging and the production ones trust the email, partner id and lead ids the browser sends).

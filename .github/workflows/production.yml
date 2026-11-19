@@ -6,8 +6,9 @@ name: Deploy to production (www.solvivaenergy.com/mysolviva)
 # Secrets: CLOUDFLARE_API_TOKEN (Workers Scripts: Edit + Workers Routes: Edit on solvivaenergy.com),
 # CLOUDFLARE_ACCOUNT_ID, VITE_SUPABASE_ANON_KEY. Variables: VITE_SUPABASE_URL and, optionally,
 # VITE_N8N_WEBHOOK_URL_PRODUCTION / VITE_ENABLE_SUBMISSIONS_PRODUCTION / VITE_ENABLE_PMS_PRODUCTION to
-# override the defaults in scripts/build-production.mjs. Without the Cloudflare token the build still
-# runs and the deploy step is skipped with a warning.
+# override the defaults in scripts/build-production.mjs (production Odoo through the [PROD] Portal n8n
+# workflows since 2026-11-19). Without the Cloudflare token the build still runs and the deploy step is
+# skipped with a warning.
 
 on:
   push:

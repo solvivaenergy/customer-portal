@@ -14,9 +14,10 @@ import fs from "node:fs";
 const DEFAULTS = {
   BASE_PATH: "/mysolviva/",
   VITE_MONITORING_API_URL: "https://monitoring.solvivaenergy.com",
-  // Until production copies of the portal workflows exist (docs/integrations.md), the production site
-  // reads and writes odoo.sh staging through the [STAGING] n8n workflows, like the demo.
-  VITE_N8N_WEBHOOK_URL: "https://solviva.app.n8n.cloud/webhook/staging",
+  // The [PROD] Portal n8n workflows → production Odoo (since 2026-11-19, for the beta; before that the
+  // production site used the [STAGING] ones like the demo). ".../webhook/staging" goes back to odoo.sh
+  // staging. See docs/integrations.md and scripts/n8n/create-portal-workflows.mjs.
+  VITE_N8N_WEBHOOK_URL: "https://solviva.app.n8n.cloud/webhook/portal",
   VITE_ENABLE_SUBMISSIONS: "true",
   // Request PMS is switched off (the Support hub shows "Coming soon") until the PMS intake is agreed.
   VITE_ENABLE_PMS: "false",
