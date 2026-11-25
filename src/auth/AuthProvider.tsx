@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { appUrl } from "@/lib/env";
+import { startClarity } from "@/lib/clarity";
 import { mustChangePassword, passwordChangedMetadata } from "@/lib/firstLogin";
 
 type AuthState = {
@@ -36,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
+      // Only now: by this point Supabase has removed a recovery link's tokens from the address (lib/clarity.ts).
+      startClarity();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);

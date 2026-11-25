@@ -92,16 +92,17 @@ function referralShare(url, prefix) {
 }
 
 // Everything the app loads or calls: Google Fonts (index.html), Supabase (auth + realtime), the
-// monitoring API (readings and the weather chip) and the n8n webhooks. 'unsafe-inline' for styles
-// only: React and the chart library set inline style attributes.
+// monitoring API (readings and the weather chip), the n8n webhooks and Microsoft Clarity
+// (src/lib/clarity.ts: the tag from www, the recorder from scripts, uploads to <letter>.clarity.ms).
+// 'unsafe-inline' for styles only: React and the chart library set inline style attributes.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' https://www.clarity.ms https://scripts.clarity.ms",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https://kzsocvzhbgtfyksrjmvk.supabase.co wss://kzsocvzhbgtfyksrjmvk.supabase.co" +
-    " https://monitoring.solvivaenergy.com https://solviva.app.n8n.cloud",
+    " https://monitoring.solvivaenergy.com https://solviva.app.n8n.cloud https://*.clarity.ms",
   "worker-src 'self' blob:",
   "frame-ancestors 'self'",
   "base-uri 'self'",

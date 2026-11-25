@@ -105,6 +105,19 @@ the production site uses the `[PROD] Portal …` n8n workflows on **production**
 tickets and replies submitted there are real. From 2026-11-05 until then it used the staging workflows,
 so anything testers filed in that period is on odoo.sh staging only and disappears with its next rebuild.
 
+## Microsoft Clarity (2026-11-25)
+
+Heat maps and session recordings of the production site, in the Clarity project "Customer Portal"
+(clarity.microsoft.com). `src/lib/clarity.ts` loads it when the build has `VITE_CLARITY_PROJECT_ID`, which
+only `scripts/build-production.mjs` sets: the demo and local development record nothing. It starts after
+Supabase has read the session, so a password-recovery link's tokens are out of the address first.
+
+`<body data-clarity-mask="true">` in `index.html` masks every text and image in the browser, whatever mode
+the Clarity dashboard is set to: recordings show the layout, clicks and scrolling with placeholder blocks
+for the content. Unmask a harmless label with `data-clarity-unmask="true"` on its element; never unmask
+anything that shows a customer's name, address, contact details, energy or peso figures, or ticket text.
+The Content-Security-Policy in `worker/index.js` lists Clarity's hosts.
+
 ## Before go-live (not done)
 
 - The portal n8n workflows must verify the Supabase JWT instead of trusting the email, partner id and

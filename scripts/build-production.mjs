@@ -21,6 +21,10 @@ const DEFAULTS = {
   VITE_ENABLE_SUBMISSIONS: "true",
   // Request PMS is switched off (the Support hub shows "Coming soon") until the PMS intake is agreed.
   VITE_ENABLE_PMS: "false",
+  // Microsoft Clarity project "Customer Portal" (heat maps, session recordings; src/lib/clarity.ts). The id
+  // is public: it is in the page of every site that uses Clarity. Only this build sets it, so the demo
+  // and local development record nothing.
+  VITE_CLARITY_PROJECT_ID: "zj43paqfuf",
 };
 for (const [k, v] of Object.entries(DEFAULTS)) if (!process.env[k]) process.env[k] = v;
 

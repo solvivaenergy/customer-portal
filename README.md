@@ -70,7 +70,8 @@ redirects to `www`. Never put it on a `workers.dev` host: nothing else is config
 - Build: `node scripts/build-production.mjs` — base path `/mysolviva/`, monitoring API
   `https://monitoring.solvivaenergy.com`, the **production** n8n webhooks (`…/webhook/portal`, the
   `[PROD] Portal …` workflows on production Odoo since 2026-11-19; the demo and local development stay
-  on `…/webhook/staging`, see `docs/integrations.md`), submissions on, PMS off. The repository variables
+  on `…/webhook/staging`, see `docs/integrations.md`), submissions on, PMS off, Microsoft Clarity on
+  (heat maps and recordings with all text masked, `src/lib/clarity.ts`). The repository variables
   `VITE_N8N_WEBHOOK_URL_PRODUCTION`, `VITE_ENABLE_SUBMISSIONS_PRODUCTION` and `VITE_ENABLE_PMS_PRODUCTION`
   override those defaults in CI.
 - Deploy: `.github/workflows/production.yml` runs on every push to `main` and deploys once the repository
